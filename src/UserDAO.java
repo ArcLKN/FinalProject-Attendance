@@ -23,7 +23,7 @@ public class UserDAO {
             System.out.println("User deleted successfully.");
         }
     }
-    public void searchUser(int id) throws SQLException {
+    public boolean searchUser(int id) throws SQLException {
         String sql = "SELECT * FROM users WHERE id = ?";
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -33,8 +33,10 @@ public class UserDAO {
             if (response.next()) {
                 String username = response.getString("email");
                 System.out.println("User's email is: " + username);
+                return true;
             }
         }
+        return false;
     }
     public void updateUser(int id, String key, String value) throws SQLException {
         String sql = "UPDATE users SET ? = ? WHERE id = ?";

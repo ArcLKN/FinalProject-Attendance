@@ -21,6 +21,7 @@ public class GUI extends JFrame {
 
     public GUI (String title, UserDAO userDAO) {
         super(title);
+        this . userDAO = userDAO;
         this . setSize(400, 300);
         this.setLocation(500, 200);
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -77,13 +78,10 @@ public class GUI extends JFrame {
             int userId = Integer.parseInt(IdField.getText());
             System.out.println("ID: " + userId);
             try {
-                userDAO.searchUser(userId);
+                doSignInLabel = userDAO.searchUser(userId);
             } catch (SQLException exception ) {
                 exception.printStackTrace();
             }
-
-
-            doSignInLabel = !doSignInLabel;
             signInAnswerLabel . setVisible(doSignInLabel);
             signInErrorLabel . setVisible(!doSignInLabel);
         }
