@@ -10,6 +10,10 @@ import java.sql.SQLException;
 public class GUI extends JFrame {
     private UserDAO userDAO;
 
+    JPanel mainPanel;
+    JPanel secondaryPanel;
+    JPanel navBar;
+
     boolean doSignInLabel = false;
     JLabel signInAnswerLabel;
     JLabel signInErrorLabel;
@@ -27,13 +31,28 @@ public class GUI extends JFrame {
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setResizable(true);
 
-        JPanel mainPanel = new JPanel();
+        navBar = new JPanel();
+        navBar . setBounds(0, 0, 400, 30);
 
-        mainPanel . setBounds (0 , 0 , 400 , 300) ;
+        JButton mainPanelButton = new JButton("Main");
+        mainPanelButton.setBounds(0, 0, 50, 30);
+        showMain switchToMain = new showMain();
+        mainPanelButton.addActionListener(switchToMain);
+        navBar.add(mainPanelButton);
+
+        JButton secondaryPanelButton = new JButton("Secondary");
+        secondaryPanelButton.setBounds(50, 0, 50, 30);
+        showSecondary switchToSecondary = new showSecondary();
+        secondaryPanelButton.addActionListener(switchToSecondary);
+        navBar.add(secondaryPanelButton);
+
+        mainPanel = new JPanel();
+
+        mainPanel . setBounds (0 , 30 , 400 , 300) ;
         mainPanel . setLayout ( null ) ;
         mainPanel.setBackground(Color.WHITE);
 
-        actualTimeLabel . setBounds(20, 20, 100, 20);
+        actualTimeLabel . setBounds(20, 30, 100, 20);
         mainPanel . add (actualTimeLabel);
 
         JLabel label = new JLabel ("ID :");
@@ -64,6 +83,15 @@ public class GUI extends JFrame {
         signInErrorLabel . setVisible(false);
         mainPanel . add ( signInErrorLabel ) ;
 
+        secondaryPanel = new JPanel();
+        secondaryPanel . setBounds (0 , 30 , 400 , 300) ;
+        JLabel sTitle = new JLabel ("Secondary Panel!");
+        sTitle . setBounds (50 , 40 , 50 , 30) ;
+        secondaryPanel . add ( sTitle ) ;
+        secondaryPanel.setVisible(false);
+
+        this . add(navBar);
+        this . add(secondaryPanel);
         this . add(mainPanel);
 
         this . setVisible ( true ) ;
@@ -84,6 +112,21 @@ public class GUI extends JFrame {
             }
             signInAnswerLabel . setVisible(doSignInLabel);
             signInErrorLabel . setVisible(!doSignInLabel);
+        }
+    }
+
+    private class showMain implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            mainPanel . setVisible(true);
+            secondaryPanel . setVisible(false);
+        }
+    }
+    private class showSecondary implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            mainPanel . setVisible(false);
+            secondaryPanel . setVisible(true);
         }
     }
     public static void main(String[] args) {
