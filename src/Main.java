@@ -1,7 +1,7 @@
 import java.sql.SQLException;
 
 public class Main {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         UserDAO userDAO = new UserDAO();
 
         //userDAO.createUser("Raphael", "raph@gmail.com", 20);
