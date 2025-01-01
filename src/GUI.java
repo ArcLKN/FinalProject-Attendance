@@ -10,6 +10,10 @@ import java.sql.SQLException;
 public class GUI extends JFrame {
     private UserDAO userDAO;
 
+    JPanel mainPanel;
+    JPanel secondaryPanel;
+    JPanel navBar;
+
     boolean doSignInLabel = false;
     JLabel signInAnswerLabel;
     JLabel signInErrorLabel;
@@ -21,17 +25,20 @@ public class GUI extends JFrame {
 
     public GUI (String title, UserDAO userDAO) throws InterruptedException {
         super(title);
+        this . userDAO = userDAO;
         this . setSize(400, 300);
         this.setLocation(500, 200);
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setResizable(true);
 
-        JPanel mainPanel = new JPanel();
+        mainPanel = new JPanel();
 
-        //Setting window
-        mainPanel . setBounds (0 , 0 , 400 , 300) ;
+        mainPanel . setBounds (0 , 30 , 400 , 300) ;
         mainPanel . setLayout ( null ) ;
         mainPanel.setBackground(Color.WHITE);
+
+        navBar = new JPanel();
+        navBar . setBounds(0, 0, 400, 30);
 
         //Displaying date and time
         timeFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
@@ -43,6 +50,18 @@ public class GUI extends JFrame {
         int panelWidth = mainPanel.getWidth();
         timeLabel.setBounds(0, 10, panelWidth, 30); // Center horizontally using full panel width
         timeLabel.setHorizontalAlignment(SwingConstants.CENTER);
+
+        JButton mainPanelButton = new JButton("Main");
+        mainPanelButton.setBounds(0, 0, 50, 30);
+        showMain switchToMain = new showMain();
+        mainPanelButton.addActionListener(switchToMain);
+        navBar.add(mainPanelButton);
+
+        JButton secondaryPanelButton = new JButton("Secondary");
+        secondaryPanelButton.setBounds(50, 0, 50, 30);
+        showSecondary switchToSecondary = new showSecondary();
+        secondaryPanelButton.addActionListener(switchToSecondary);
+        navBar.add(secondaryPanelButton);
 
         //Sign in priority text
         JLabel labelPriority = new JLabel ("Sign in as...");
@@ -92,37 +111,55 @@ public class GUI extends JFrame {
 //        signInErrorLabel . setVisible(false);
 //        mainPanel . add ( signInErrorLabel ) ;
 
+        //Creating the second window
 
-        //Creating the window
+        secondaryPanel = new JPanel();
+        secondaryPanel . setBounds (0 , 30 , 400 , 300) ;
+        JLabel sTitle = new JLabel ("Secondary Panel!");
+        sTitle . setBounds (50 , 40 , 50 , 30) ;
+        secondaryPanel . add ( sTitle ) ;
+        secondaryPanel.setVisible(false);
+
+        this . add(navBar);
+        this . add(secondaryPanel);
+
         this . add(mainPanel);
         this . setVisible ( true ) ;
     }
 
-    //ActionListener is an imported interface that handles events.
-    //We create a class signIn implemented on ActionListener
-//    private class signIn implements ActionListener {
-//        @Override
-//
-//        //Instructions that will occur once the button is pressed
-//        public void actionPerformed(ActionEvent e) {
-//            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yy HH:mm:ss");
-//            String timeStr = sdf.format(new Date());
-//            System.out.println("Button clicked! at " + timeStr);
-//            System.out.println("ID: " + IdField.getText());
-//            int userId = Integer.parseInt(IdField.getText());
-//            System.out.println("ID: " + userId);
-//            try {
-//                userDAO.searchUser(userId);
-//            } catch (SQLException exception ) {
-//                exception.printStackTrace();
-//            }
-//
-//
-//            doSignInLabel = !doSignInLabel;
-//            signInAnswerLabel . setVisible(doSignInLabel);
-//            signInErrorLabel . setVisible(!doSignInLabel);
-//        }
-//    }
+    private class signIn implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yy HH:mm:ss");
+            String timeStr = sdf.format(new Date());
+            System.out.println("Button clicked! at " + timeStr);
+            System.out.println("ID: " + IdField.getText());
+            int userId = Integer.parseInt(IdField.getText());
+            System.out.println("ID: " + userId);
+            try {
+                doSignInLabel = userDAO.searchUser(userId);
+            } catch (SQLException exception ) {
+                exception.printStackTrace();
+            }
+            signInAnswerLabel . setVisible(doSignInLabel);
+            signInErrorLabel . setVisible(!doSignInLabel);
+        }
+    }
+
+    private class showMain implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            mainPanel . setVisible(true);
+            secondaryPanel . setVisible(false);
+        }
+    }
+    private class showSecondary implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            mainPanel . setVisible(false);
+            secondaryPanel . setVisible(true);
+        }
+    }
 
     public static void main(String[] args) {
     }
