@@ -9,6 +9,7 @@ import java.sql.SQLException;
 
 public class GUI extends JFrame {
     private UserDAO userDAO;
+    private ConnectionDAO connectionDAO;
 
 
     // ------ VARIABLES ------
@@ -32,9 +33,10 @@ public class GUI extends JFrame {
 
 
     // ------ LOGIN INTERFACE ------
-    public GUI (String title, UserDAO userDAO) throws InterruptedException {
+    public GUI (String title, UserDAO userDAO, ConnectionDAO connectionDAO) throws InterruptedException {
         super(title);
         this.userDAO = userDAO;
+        this.connectionDAO = connectionDAO;
         this.setSize(400, 300);
         this.setLocation(500, 200);
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -169,8 +171,9 @@ public class GUI extends JFrame {
     private class signIn implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yy HH:mm:ss");
-            String timeStr = sdf.format(new Date());
+            Date date = new Date();
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String timeStr = sdf.format(date);
             System.out.println("Button clicked! at " + timeStr);
             System.out.println("ID: " + IdField.getText());
             int userId = Integer.parseInt(IdField.getText());
@@ -179,6 +182,13 @@ public class GUI extends JFrame {
                 doSignInLabel = userDAO.searchUser(userId);
             } catch (SQLException exception ) {
                 exception.printStackTrace();
+            }
+            if (doSignInLabel) {
+                try {
+                    connectionDAO.createConnection(userId, date);
+                } catch (SQLException exception) {
+                    throw new RuntimeException(exception);
+                }
             }
             signInAnswerLabel . setVisible(doSignInLabel);
             signInErrorLabel . setVisible(!doSignInLabel);
