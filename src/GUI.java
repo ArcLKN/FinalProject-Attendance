@@ -10,9 +10,11 @@ import java.sql.SQLException;
 public class GUI extends JFrame {
     private UserDAO userDAO;
 
+
     // ------ VARIABLES ------
     JPanel mainPanel;
     JPanel secondaryPanel;
+    JPanel employeeCheck;
     JPanel navBar;
 
     boolean doSignInLabel = false;
@@ -75,6 +77,13 @@ public class GUI extends JFrame {
         // button.setEnabled(false);
 
         //Sign in button onclick handling
+        employeeCheck = new JPanel();
+        employeeCheck . setBounds (0 , 0 , 400 , 300) ;
+        employeeCheck . setLayout ( null ) ;
+        employeeCheck.setBackground(Color.WHITE);
+        employeeCheck.setVisible(doSignInLabel);
+        mainPanel . add ( employeeCheck ) ;
+
         signInAnswerLabel = new JLabel ("You signed in successfully!");
         signInAnswerLabel . setBounds (50 , 130 , 300 , 50) ;
         signInAnswerLabel . setForeground(Color.GREEN);
