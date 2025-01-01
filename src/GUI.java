@@ -199,7 +199,4 @@ public class GUI extends JFrame {
             secondaryPanel . setVisible(true);
         }
     }
-
-    public static void main(String[] args) {
-    }
 }
