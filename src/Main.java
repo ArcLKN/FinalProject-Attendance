@@ -1,11 +1,11 @@
 import java.sql.SQLException;
 
 public class Main {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, SQLException {
         UserDAO userDAO = new UserDAO();
 
-        //userDAO.createUser("Raphael", "raph@gmail.com", 20);
-        //userDAO.searchUser(1);
+//        userDAO.createUser("Raphael", "raph@gmail.com", 20);
+//        userDAO.searchUser(1);
         new GUI("Attendance System", userDAO);
     }
 }
