@@ -2,6 +2,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.SQLException;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import javax.swing.*;
@@ -9,18 +10,18 @@ import java.sql.SQLException;
 
 public class GUI extends JFrame {
     private UserDAO userDAO;
+    private ConnectionDAO connectionDAO;
 
 
     // ------ VARIABLES ------
     JPanel mainPanel;
     JPanel secondaryPanel;
-    JPanel employeeCheck;
     JPanel navBar;
 
     boolean doSignInLabel = false;
     JLabel signInAnswerLabel;
-    JLabel signInErrorLabel;
     JTextField IdField;
+    Color signInLabelColor = Color.GREEN;
 
     JTextField IdFieldUser;
     JTextField IdFieldPswd;
@@ -32,9 +33,10 @@ public class GUI extends JFrame {
 
 
     // ------ LOGIN INTERFACE ------
-    public GUI (String title, UserDAO userDAO) throws InterruptedException {
+    public GUI (String title, UserDAO userDAO, ConnectionDAO connectionDAO) throws InterruptedException {
         super(title);
         this.userDAO = userDAO;
+        this.connectionDAO = connectionDAO;
         this.setSize(400, 300);
         this.setLocation(500, 200);
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -76,12 +78,12 @@ public class GUI extends JFrame {
         mainPanel . add ( signInButton ) ;
         // button.setEnabled(false);
 
-        //Sign in button onclick handling
-        signInErrorLabel = new JLabel ("There was an error during sign in.");
-        signInErrorLabel . setBounds (50 , 130 , 300 , 50) ;
-        signInErrorLabel . setForeground(Color.RED);
-        signInErrorLabel . setVisible(false);
-        mainPanel . add ( signInErrorLabel ) ;
+        //Sign in button onclick handling (to keep ?)
+        signInAnswerLabel = new JLabel ("You signed in successfully!");
+        signInAnswerLabel . setBounds (50 , 130 , 300 , 50) ;
+        signInAnswerLabel . setForeground(signInLabelColor);
+        signInAnswerLabel . setVisible(doSignInLabel);
+        mainPanel . add ( signInAnswerLabel ) ;
 
 
         //------ ADMIN WINDOW ------
@@ -156,23 +158,30 @@ public class GUI extends JFrame {
     private class signIn implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yy HH:mm:ss");
-            String timeStr = sdf.format(new Date());
+            Date date = new Date();
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String timeStr = sdf.format(date);
             System.out.println("Button clicked! at " + timeStr);
             System.out.println("ID: " + IdField.getText());
             int userId = Integer.parseInt(IdField.getText());
             System.out.println("ID: " + userId);
 
+            //Seems to work
+            boolean doUserExists = false;
+
             try {
-                doSignInLabel = userDAO.searchUser(userId);
+                doUserExists = userDAO.searchUser(userId);
             } catch (SQLException exception ) {
                 exception.printStackTrace();
             }
 
-            if (doSignInLabel) {
-                employeeLoginSuccess();
+            if (!doUserExists) {
+                signInAnswerLabel.setText("This user ID does not exist.");
+                signInLabelColor = Color.RED;
+                signInAnswerLabel . setForeground(signInLabelColor);
+                signInAnswerLabel . setVisible(true);
             } else {
-                signInErrorLabel . setVisible(true);
+                employeeLoginSuccess(userId, date);
             }
         }
     }
@@ -192,20 +201,95 @@ public class GUI extends JFrame {
         }
     }
 
-    private void employeeLoginSuccess() {
+    private void employeeLoginSuccess(int userId, Date date) {
+        Date lastConnectionDate = null;
+
+        //Dialog creation
         JDialog dialog = new JDialog(GUI.this, "Login successed", true);
         dialog.setSize(300, 200);
         dialog.setLocationRelativeTo(GUI.this); // Center relative to main panel
         dialog.setLayout(new BorderLayout());
 
+        //Welcome message
         JLabel messageLabel = new JLabel("Welcome " + userDAO.getUserName(Integer.parseInt(IdField.getText())), JLabel.CENTER);
-        dialog.add(messageLabel, BorderLayout.CENTER);
+        dialog.add(messageLabel, BorderLayout.NORTH);
+
+        JLabel AnswerCheckedLabel = new JLabel("", JLabel.CENTER);
+        Color AnswerCheckedColor;
+        dialog.add(AnswerCheckedLabel, BorderLayout.CENTER);
+        AnswerCheckedLabel.setVisible(false);
 
         JButton checkButton = new JButton("Check in");
-        checkButton.addActionListener(e -> dialog.dispose());
+        checkButton.addActionListener(e -> {
+            dialog.dispose(); // Fermer le dialogue
+            this.dispose();
+            System.exit(0);
+        });
         JPanel buttonPanel = new JPanel();
         buttonPanel.add(checkButton);
         dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        try {
+            lastConnectionDate = connectionDAO.searchLastUsersConnection(userId);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+        if (lastConnectionDate != null) {
+            //User is checking in for the first time today
+            Date currentDate = new Date();
+            SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
+            String lastConnectionDay = dateFormatter.format(lastConnectionDate);
+            String currentDay = dateFormatter.format(currentDate);
+            System.out.println("User's last connection date is: " + lastConnectionDate);
+            System.out.println("Last connection day: " + lastConnectionDay);
+
+            //If user already checked in today
+            boolean hasUserAlreadySignedIn = lastConnectionDay.equals(currentDay);
+            if (hasUserAlreadySignedIn) {
+                //Not sure if it works
+                JOptionPane.showMessageDialog(dialog,
+                        "This user has already signed-in today.",
+                        "Check-in Error",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+        }
+
+        try {
+            connectionDAO.createConnection(userId, date);
+        } catch (SQLException exception) {
+            throw new RuntimeException(exception);
+        }
+        SimpleDateFormat hourFormatter = new SimpleDateFormat("HH:mm:ss");
+        String userHourStr = hourFormatter.format(date);
+        Date userHour;
+
+        try {
+            userHour = hourFormatter.parse(userHourStr);
+        } catch (ParseException ex) {
+            throw new RuntimeException(ex);
+        }
+        String fixedHourStr = "10:00:00";
+        Date fixedHour;
+
+        try {
+            fixedHour = hourFormatter.parse(fixedHourStr);
+        } catch (ParseException ex) {
+            throw new RuntimeException(ex);
+        }
+        boolean isUserLate = userHour.after(fixedHour);
+
+        if (isUserLate) {
+            AnswerCheckedLabel.setText("You are late.");
+            AnswerCheckedColor = Color.ORANGE;
+            AnswerCheckedLabel . setForeground(AnswerCheckedColor);
+            AnswerCheckedLabel . setVisible(true);
+        } else {
+            signInAnswerLabel.setText("You signed-in successfully!");
+            signInLabelColor = Color.GREEN;
+            signInAnswerLabel . setForeground(signInLabelColor);
+            signInAnswerLabel . setVisible(true);
+        }
 
         dialog.setVisible(true);
     }
