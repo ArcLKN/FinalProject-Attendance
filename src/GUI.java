@@ -7,6 +7,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import javax.swing.*;
 import java.sql.SQLException;
+import java.util.Objects;
 
 public class GUI extends JFrame {
     private UserDAO userDAO;
@@ -23,8 +24,10 @@ public class GUI extends JFrame {
     JTextField IdField;
     Color signInLabelColor = Color.GREEN;
 
-    JTextField IdFieldUser;
+    JTextField IdFieldAdmin;
     JTextField IdFieldPswd;
+    JLabel adminAnswerLabel;
+    Color adminLabelColor;
 
     SimpleDateFormat timeFormat;
     JLabel timeLabel;
@@ -78,7 +81,7 @@ public class GUI extends JFrame {
         mainPanel . add ( signInButton ) ;
         // button.setEnabled(false);
 
-        //Sign in button onclick handling (to keep ?)
+        //Sign in button onclick handling
         signInAnswerLabel = new JLabel ("You signed in successfully!");
         signInAnswerLabel . setBounds (50 , 130 , 300 , 50) ;
         signInAnswerLabel . setForeground(signInLabelColor);
@@ -106,11 +109,11 @@ public class GUI extends JFrame {
         labelUsername.setBounds(100 , 50 , 200 , 30) ;
         secondaryPanel.add(labelUsername) ;
 
-        //ID input username
-        IdFieldUser = new JTextField (20) ;
-        IdFieldUser . setBounds (100 , 80 , 200 , 20) ;
-        IdFieldUser . getText () ;
-        secondaryPanel . add ( IdFieldUser ) ;
+        //ID input admin
+        IdFieldAdmin = new JTextField (20) ;
+        IdFieldAdmin . setBounds (100 , 80 , 200 , 20) ;
+        IdFieldAdmin . getText () ;
+        secondaryPanel . add ( IdFieldAdmin ) ;
 
         //ID label password
         JLabel labelPassword = new JLabel ("Enter your password :");
@@ -123,12 +126,20 @@ public class GUI extends JFrame {
         IdFieldPswd . getText () ;
         secondaryPanel . add ( IdFieldPswd ) ;
 
-        //Sign in button
-        JButton signInButton2 = new JButton ("Sign in") ; //Interface UI button
-        signInButton2 . setBounds (150 , 172 , 100 , 40) ;
-        signIn signInButtonAction2 = new signIn(); //Creating an object from the signIn class
-        signInButton2.addActionListener(signInButtonAction2); //Making the UI button handle events as signIn class definition
-        secondaryPanel . add ( signInButton2 ) ;
+        //Sign in button admin
+        JButton signInAdminButton = new JButton ("Sign in") ; //Interface UI button
+        signInAdminButton . setBounds (150 , 172 , 100 , 40) ;
+        signInAdmin signInAdminButtonAction = new signInAdmin(); //Creating an object from the signIn class
+        signInAdminButton.addActionListener(signInAdminButtonAction); //Making the UI button handle events as signIn class definition
+        secondaryPanel . add ( signInAdminButton ) ;
+        // button.setEnabled(false);
+
+        //Sign in button admin onclick handling
+        adminAnswerLabel = new JLabel ("");
+        adminAnswerLabel . setBounds (50 , 30 , 300 , 50) ;
+        adminAnswerLabel . setForeground(adminLabelColor);
+        adminAnswerLabel . setVisible(doSignInLabel);
+        secondaryPanel . add ( adminAnswerLabel ) ;
 
 
         //------ NAVBAR ------
@@ -155,6 +166,7 @@ public class GUI extends JFrame {
         this . setVisible ( true ) ;
     }
 
+    //------ FUNCTIONS ------
     private class signIn implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -166,7 +178,6 @@ public class GUI extends JFrame {
             int userId = Integer.parseInt(IdField.getText());
             System.out.println("ID: " + userId);
 
-            //Seems to work
             boolean doUserExists = false;
 
             try {
@@ -182,6 +193,43 @@ public class GUI extends JFrame {
                 signInAnswerLabel . setVisible(true);
             } else {
                 employeeLoginSuccess(userId, date);
+            }
+        }
+    }
+
+    private class signInAdmin implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            Date date = new Date();
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String timeStr = sdf.format(date);
+            System.out.println("Button clicked! at " + timeStr);
+            System.out.println("ID: " + IdFieldAdmin.getText());
+            int adminId = Integer.parseInt(IdFieldAdmin.getText());
+            System.out.println("ID: " + adminId);
+
+            boolean doUserExists = false;
+            String isPasswordTrue = "";
+
+            try {
+                doUserExists = userDAO.searchUser(adminId);
+                isPasswordTrue = userDAO.getPassword(Integer.parseInt(IdFieldAdmin.getText()));
+            } catch (SQLException exception ) {
+                exception.printStackTrace();
+            }
+
+            if (!doUserExists) {
+                adminAnswerLabel.setText("This user ID does not exist.");
+                adminLabelColor = Color.RED;
+                adminAnswerLabel . setForeground(adminLabelColor);
+                adminAnswerLabel . setVisible(true);
+            } else if (!Objects.equals(IdFieldPswd.getText(), isPasswordTrue)) {
+                adminAnswerLabel.setText("Wrong password or ID.");
+                adminLabelColor = Color.RED;
+                adminAnswerLabel . setForeground(adminLabelColor);
+                adminAnswerLabel . setVisible(true);
+            } else {
+                adminLoginSuccess(adminId, date);
             }
         }
     }
@@ -293,6 +341,122 @@ public class GUI extends JFrame {
 
         dialog.setVisible(true);
     }
+
+    private void adminLoginSuccess(int adminId, Date date) {
+        Date lastConnectionDate = null;
+
+        //Dialog creation
+        JDialog dialog = new JDialog(GUI.this, "Admin login successed", true);
+        dialog.setSize(400, 300);
+        dialog.setLocationRelativeTo(GUI.this); // Center relative to main panel
+        dialog.setLayout(new BorderLayout());
+
+        JPanel messagePanel = new JPanel();
+        messagePanel.setLayout(new BoxLayout(messagePanel, BoxLayout.Y_AXIS));
+        dialog.add(messagePanel, BorderLayout.NORTH);
+
+        JPanel modificationPanel = new JPanel();
+        modificationPanel.setLayout(new BoxLayout(modificationPanel, BoxLayout.Y_AXIS));
+        dialog.add(modificationPanel, BorderLayout.CENTER);
+
+        // Welcome message
+        JLabel messageLabel = new JLabel("Welcome " + userDAO.getUserName(Integer.parseInt(IdFieldAdmin.getText())));
+        messageLabel.setAlignmentX(Component.CENTER_ALIGNMENT); // Center alignment
+        messagePanel.add(messageLabel);
+
+        // Late or success message
+        JLabel AnswerCheckedLabel = new JLabel("");
+        AnswerCheckedLabel.setAlignmentX(Component.CENTER_ALIGNMENT); // Center alignment
+        Color AnswerCheckedColor;
+        AnswerCheckedLabel.setVisible(false);
+        messagePanel.add(AnswerCheckedLabel);
+
+        JButton viewRecords = new JButton("View attendance records");
+        modificationPanel.add(viewRecords);
+
+        JButton registerUser = new JButton("Register new user");
+        modificationPanel.add(registerUser);
+
+        JButton editUser = new JButton("Edit user");
+        modificationPanel.add(editUser);
+
+        JButton deleteUser = new JButton("Delete user");
+        modificationPanel.add(deleteUser);
+
+        JButton checkButton = new JButton("Finish");
+        checkButton.addActionListener(e -> {
+            dialog.dispose();
+            this.dispose();
+            System.exit(0);
+        });
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(checkButton);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        try {
+            lastConnectionDate = connectionDAO.searchLastUsersConnection(adminId);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        }
+        if (lastConnectionDate != null) {
+            //User is checking in for the first time today
+            Date currentDate = new Date();
+            SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
+            String lastConnectionDay = dateFormatter.format(lastConnectionDate);
+            String currentDay = dateFormatter.format(currentDate);
+            System.out.println("User's last connection date is: " + lastConnectionDate);
+            System.out.println("Last connection day: " + lastConnectionDay);
+
+            //If user already checked in today
+            boolean hasUserAlreadySignedIn = lastConnectionDay.equals(currentDay);
+            if (hasUserAlreadySignedIn) {
+                JOptionPane.showMessageDialog(dialog,
+                        "This user has already signed-in today.",
+                        "Check-in Error",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+        }
+
+        try {
+            connectionDAO.createConnection(adminId, date);
+        } catch (SQLException exception) {
+            throw new RuntimeException(exception);
+        }
+        SimpleDateFormat hourFormatter = new SimpleDateFormat("HH:mm:ss");
+        String userHourStr = hourFormatter.format(date);
+        Date userHour;
+
+        try {
+            userHour = hourFormatter.parse(userHourStr);
+        } catch (ParseException ex) {
+            throw new RuntimeException(ex);
+        }
+        String fixedHourStr = "10:00:00";
+        Date fixedHour;
+
+        try {
+            fixedHour = hourFormatter.parse(fixedHourStr);
+        } catch (ParseException ex) {
+            throw new RuntimeException(ex);
+        }
+        boolean isUserLate = userHour.after(fixedHour);
+
+        if (isUserLate) {
+            AnswerCheckedLabel.setText("You are late.");
+            AnswerCheckedColor = Color.ORANGE;
+            AnswerCheckedLabel . setForeground(AnswerCheckedColor);
+            AnswerCheckedLabel . setVisible(true);
+        } else {
+            AnswerCheckedLabel.setText("You signed-in successfully!");
+            AnswerCheckedColor = Color.GREEN;
+            AnswerCheckedLabel . setForeground(AnswerCheckedColor);
+            AnswerCheckedLabel . setVisible(true);
+        }
+
+        dialog.setVisible(true);
+    }
+
     public static void main(String[] args) {
     }
 }

@@ -75,4 +75,30 @@ public class UserDAO {
 
         return username; // Return the username or null if not found
     }
+
+    public String getPassword(int id) {
+        String sqlPassword = "SELECT password FROM users WHERE id = ?";
+        String pswd = null;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statementPswd = connection.prepareStatement(sqlPassword)) {
+            // Set the id parameter in the query
+            statementPswd.setInt(1, id);
+
+            // Execute the query
+            ResultSet response = statementPswd.executeQuery();
+
+            // Check if a result is returned
+            if (response.next()) {
+                pswd = response.getString("password"); // Get the 'name' column
+            } else {
+                System.out.println("Wrong password.");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error occurred while fetching password: " + e.getMessage());
+            throw new RuntimeException(e); // Handle or rethrow the exception as needed
+        }
+
+        return pswd; // Return the username or null if not found
+    }
 }
