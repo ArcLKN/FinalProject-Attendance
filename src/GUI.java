@@ -77,19 +77,6 @@ public class GUI extends JFrame {
         // button.setEnabled(false);
 
         //Sign in button onclick handling
-        employeeCheck = new JPanel();
-        employeeCheck . setBounds (0 , 0 , 400 , 300) ;
-        employeeCheck . setLayout ( null ) ;
-        employeeCheck.setBackground(Color.WHITE);
-        employeeCheck.setVisible(doSignInLabel);
-        mainPanel . add ( employeeCheck ) ;
-
-        signInAnswerLabel = new JLabel ("You signed in successfully!");
-        signInAnswerLabel . setBounds (50 , 130 , 300 , 50) ;
-        signInAnswerLabel . setForeground(Color.GREEN);
-        signInAnswerLabel . setVisible(doSignInLabel);
-        mainPanel . add ( signInAnswerLabel ) ;
-
         signInErrorLabel = new JLabel ("There was an error during sign in.");
         signInErrorLabel . setBounds (50 , 130 , 300 , 50) ;
         signInErrorLabel . setForeground(Color.RED);
@@ -175,13 +162,18 @@ public class GUI extends JFrame {
             System.out.println("ID: " + IdField.getText());
             int userId = Integer.parseInt(IdField.getText());
             System.out.println("ID: " + userId);
+
             try {
                 doSignInLabel = userDAO.searchUser(userId);
             } catch (SQLException exception ) {
                 exception.printStackTrace();
             }
-            signInAnswerLabel . setVisible(doSignInLabel);
-            signInErrorLabel . setVisible(!doSignInLabel);
+
+            if (doSignInLabel) {
+                employeeLoginSuccess();
+            } else {
+                signInErrorLabel . setVisible(true);
+            }
         }
     }
 
@@ -200,6 +192,23 @@ public class GUI extends JFrame {
         }
     }
 
+    private void employeeLoginSuccess() {
+        JDialog dialog = new JDialog(GUI.this, "Login successed", true);
+        dialog.setSize(300, 200);
+        dialog.setLocationRelativeTo(GUI.this); // Center relative to main panel
+        dialog.setLayout(new BorderLayout());
+
+        JLabel messageLabel = new JLabel("Welcome " + userDAO.getUserName(Integer.parseInt(IdField.getText())), JLabel.CENTER);
+        dialog.add(messageLabel, BorderLayout.CENTER);
+
+        JButton checkButton = new JButton("Check in");
+        checkButton.addActionListener(e -> dialog.dispose());
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(checkButton);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.setVisible(true);
+    }
     public static void main(String[] args) {
     }
 }

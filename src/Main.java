@@ -5,7 +5,7 @@ public class Main {
         UserDAO userDAO = new UserDAO();
 
         userDAO.createUser("Joanne", "joanne@gmail.com", 30);
-        userDAO.searchUser(3);
+        userDAO.searchUser(1);
         new GUI("Attendance System", userDAO);
     }
 }

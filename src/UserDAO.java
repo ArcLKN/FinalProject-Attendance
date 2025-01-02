@@ -49,4 +49,30 @@ public class UserDAO {
             System.out.println("User updated successfully.");
         }
     }
+    public String getUserName(int id) {
+        String sqlName = "SELECT name FROM users WHERE id = ?";
+        String username = null;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statementName = connection.prepareStatement(sqlName)) {
+            // Set the id parameter in the query
+            statementName.setInt(1, id);
+
+            // Execute the query
+            ResultSet response = statementName.executeQuery();
+
+            // Check if a result is returned
+            if (response.next()) {
+                username = response.getString("name"); // Get the 'name' column
+                System.out.println("User's name is: " + username);
+            } else {
+                System.out.println("No user found with ID: " + id);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error occurred while fetching user name: " + e.getMessage());
+            throw new RuntimeException(e); // Handle or rethrow the exception as needed
+        }
+
+        return username; // Return the username or null if not found
+    }
 }
