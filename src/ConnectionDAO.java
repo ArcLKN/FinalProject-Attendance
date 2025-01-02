@@ -1,7 +1,17 @@
 import java.sql.*;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+
+/* connections TABLE
+CREATE TABLE connections(
+id INT AUTO_INCREMENT PRIMARY KEY,
+user_id INT NOT NULL,
+connection_date DATETIME NOT NULL,
+FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+ */
 
 public class ConnectionDAO {
     public void createConnection(int user_id, Date connection_date) throws SQLException {
@@ -33,12 +43,42 @@ public class ConnectionDAO {
             ResultSet response = statement.executeQuery();
             System.out.println("User searched successfully.");
             if (response.next()) {
-                String username = response.getString("email");
-                System.out.println("User's email is: " + username);
+                String connection_date = response.getString("id");
+                System.out.println("User's connection_date is: " + connection_date);
                 return true;
             }
         }
         return false;
+    }
+    public boolean searchUsersConnections(int user_id) throws SQLException {
+        String sql = "SELECT * FROM connections WHERE user_id = ?";
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement . setInt(1, user_id);
+            ResultSet response = statement.executeQuery();
+            System.out.println("User searched successfully.");
+            if (response.next()) {
+                String connection_date = response.getString("connection_date");
+                System.out.println("User's connection_date is: " + connection_date);
+                return true;
+            }
+        }
+        return false;
+    }
+    public Date searchLastUsersConnection(int user_id) throws SQLException {
+        String sql = "SELECT * FROM connections WHERE user_id = ? ORDER BY connection_date DESC LIMIT 1";
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, user_id);
+            ResultSet response = statement.executeQuery();
+            System.out.println("User's last connection search executed successfully.");
+            if (response.next()) {
+                Timestamp lastConnectionTimestamp = response.getTimestamp("connection_date");
+                Date lastConnectionDate = new Date(lastConnectionTimestamp.getTime());
+                return lastConnectionDate;
+            }
+        }
+        return null;
     }
     public void updateConnection(int id, String key, String value) throws SQLException {
         String sql = "UPDATE connections SET ? = ? WHERE id = ?";

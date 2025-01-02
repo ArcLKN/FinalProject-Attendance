@@ -2,6 +2,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.SQLException;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import javax.swing.*;
@@ -22,6 +23,7 @@ public class GUI extends JFrame {
     JLabel signInAnswerLabel;
     JLabel signInErrorLabel;
     JTextField IdField;
+    Color signInLabelColor = Color.GREEN;
 
     JTextField IdFieldUser;
     JTextField IdFieldPswd;
@@ -88,15 +90,9 @@ public class GUI extends JFrame {
 
         signInAnswerLabel = new JLabel ("You signed in successfully!");
         signInAnswerLabel . setBounds (50 , 130 , 300 , 50) ;
-        signInAnswerLabel . setForeground(Color.GREEN);
+        signInAnswerLabel . setForeground(signInLabelColor);
         signInAnswerLabel . setVisible(doSignInLabel);
         mainPanel . add ( signInAnswerLabel ) ;
-
-        signInErrorLabel = new JLabel ("There was an error during sign in.");
-        signInErrorLabel . setBounds (50 , 130 , 300 , 50) ;
-        signInErrorLabel . setForeground(Color.RED);
-        signInErrorLabel . setVisible(false);
-        mainPanel . add ( signInErrorLabel ) ;
 
 
         //------ ADMIN WINDOW ------
@@ -178,20 +174,73 @@ public class GUI extends JFrame {
             System.out.println("ID: " + IdField.getText());
             int userId = Integer.parseInt(IdField.getText());
             System.out.println("ID: " + userId);
+            boolean doUserExists = false;
+            Date lastConnectionDate = null;
             try {
-                doSignInLabel = userDAO.searchUser(userId);
+                doUserExists = userDAO.searchUser(userId);
             } catch (SQLException exception ) {
                 exception.printStackTrace();
             }
-            if (doSignInLabel) {
-                try {
-                    connectionDAO.createConnection(userId, date);
-                } catch (SQLException exception) {
-                    throw new RuntimeException(exception);
+            if (!doUserExists) {
+                signInAnswerLabel.setText("This user ID does not exist.");
+                signInLabelColor = Color.RED;
+                signInAnswerLabel . setForeground(signInLabelColor);
+                signInAnswerLabel . setVisible(true);
+                return;
+            }
+            try {
+                lastConnectionDate = connectionDAO.searchLastUsersConnection(userId);
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
+            if (lastConnectionDate != null) {
+                Date currentDate = new Date();
+                SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
+                String lastConnectionDay = dateFormatter.format(lastConnectionDate);
+                String currentDay = dateFormatter.format(currentDate);
+                System.out.println("User's last connection date is: " + lastConnectionDate);
+                System.out.println("Last connection day: " + lastConnectionDay);
+                boolean hasUserAlreadySignedIn = lastConnectionDay.equals(currentDay);
+                if (hasUserAlreadySignedIn) {
+                    signInAnswerLabel.setText("This user has already signed-in.");
+                    signInLabelColor = Color.RED;
+                    signInAnswerLabel . setForeground(signInLabelColor);
+                    signInAnswerLabel . setVisible(true);
+                    return;
                 }
             }
-            signInAnswerLabel . setVisible(doSignInLabel);
-            signInErrorLabel . setVisible(!doSignInLabel);
+            try {
+                connectionDAO.createConnection(userId, date);
+            } catch (SQLException exception) {
+                throw new RuntimeException(exception);
+            }
+            SimpleDateFormat hourFormatter = new SimpleDateFormat("HH:mm:ss");
+            String userHourStr = hourFormatter.format(date);
+            Date userHour;
+            try {
+                userHour = hourFormatter.parse(userHourStr);
+            } catch (ParseException ex) {
+                throw new RuntimeException(ex);
+            }
+            String fixedHourStr = "10:00:00";
+            Date fixedHour;
+            try {
+                fixedHour = hourFormatter.parse(fixedHourStr);
+            } catch (ParseException ex) {
+                throw new RuntimeException(ex);
+            }
+            boolean isUserLate = userHour.after(fixedHour);
+            if (isUserLate) {
+                signInAnswerLabel.setText("You are late.");
+                signInLabelColor = Color.ORANGE;
+                signInAnswerLabel . setForeground(signInLabelColor);
+                signInAnswerLabel . setVisible(true);
+            } else {
+                signInAnswerLabel.setText("You signed-in successfully!");
+                signInLabelColor = Color.GREEN;
+                signInAnswerLabel . setForeground(signInLabelColor);
+                signInAnswerLabel . setVisible(true);
+            }
         }
     }
 
