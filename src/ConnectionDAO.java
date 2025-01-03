@@ -91,4 +91,48 @@ public class ConnectionDAO {
             System.out.println("Connection updated successfully.");
         }
     }
+
+    //ChatGPT
+    public List<Object[]> getUserConnections() throws SQLException {
+        String sql = "SELECT users.id, users.name, connections.connection_date " +
+                "FROM users " +
+                "INNER JOIN connections ON users.id = connections.user_id " +
+                "ORDER BY connections.connection_date DESC";
+
+        List<Object[]> userConnections = new ArrayList<>();
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+
+            while (resultSet.next()) {
+                int id = resultSet.getInt("id");
+                String name = resultSet.getString("name");
+                Timestamp timestamp = resultSet.getTimestamp("connection_date");
+                Date connectionDate = new Date(timestamp.getTime());
+
+                userConnections.add(new Object[]{id, name, connectionDate});
+            }
+        }
+        return userConnections;
+    }
+
+    public List<Object[]> getUserInfo() throws SQLException {
+        String sql = "SELECT users.id, users.name, users.age, users.email FROM users ";
+
+        List<Object[]> userInfo = new ArrayList<>();
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+
+            while (resultSet.next()) {
+                int id = resultSet.getInt("id");
+                String name = resultSet.getString("name");
+                int age = resultSet.getInt("age");
+                String email = resultSet.getString("email");
+
+                userInfo.add(new Object[]{id, name, age, email});
+            }
+        }
+        return userInfo;
+    }
 }

@@ -6,8 +6,10 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import java.sql.SQLException;
 import java.util.Objects;
+import java.util.List;
 
 public class GUI extends JFrame {
     private UserDAO userDAO;
@@ -196,7 +198,6 @@ public class GUI extends JFrame {
             }
         }
     }
-
     private class signInAdmin implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -231,6 +232,193 @@ public class GUI extends JFrame {
             } else {
                 adminLoginSuccess(adminId, date);
             }
+        }
+    }
+
+    private class showAttendance implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            JDialog attendanceDialog = new JDialog(GUI.this, "Attendance Records", true);
+            attendanceDialog.setSize(600, 400);
+            attendanceDialog.setLocationRelativeTo(GUI.this);
+            attendanceDialog.setLayout(new BorderLayout());
+
+            // Colonnes du tableau
+            String[] columnNames = {"ID", "Name", "Connection Date"};
+
+            // Récupération des données
+            DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0);
+            try {
+                List<Object[]> userConnections = connectionDAO.getUserConnections();
+
+                for (Object[] row : userConnections) {
+                    tableModel.addRow(row);
+                }
+            } catch (SQLException ex) {
+                JOptionPane.showMessageDialog(attendanceDialog, "Error retrieving user connections: " + ex.getMessage(),
+                        "Database Error", JOptionPane.ERROR_MESSAGE);
+                return; // Sortir si une erreur survient
+            }
+
+            // Création de la JTable
+            JTable table = new JTable(tableModel);
+
+            // Ajouter dans un JScrollPane
+            JScrollPane scrollPane = new JScrollPane(table);
+
+            // Ajouter le JScrollPane au JDialog
+            attendanceDialog.add(scrollPane, BorderLayout.CENTER);
+
+            // Rendre la boîte de dialogue visible
+            attendanceDialog.setVisible(true);
+        }
+    }
+    private class manageUsers implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            JDialog infoDialog = new JDialog(GUI.this, "Users informations", true);
+            infoDialog.setSize(600, 400);
+            infoDialog.setLocationRelativeTo(GUI.this);
+            infoDialog.setLayout(new BorderLayout());
+
+            // Créer un JPanel pour contenir les boutons
+            JPanel buttonPanel = new JPanel();
+            buttonPanel.setLayout(new FlowLayout()); // ou GridLayout, BoxLayout, etc.
+
+            // Créer les boutons
+            JButton registerButton = new JButton("Add user");
+            JButton editButton = new JButton("Edit user");
+            JButton deleteButton = new JButton("Delete user");
+
+            // Ajouter les boutons au JPanel
+            buttonPanel.add(registerButton);
+            buttonPanel.add(editButton);
+            buttonPanel.add(deleteButton);
+
+            // Ajouter le JPanel au JDialog dans la zone sud (SOUTH)
+            infoDialog.add(buttonPanel, BorderLayout.SOUTH);
+
+            // Colonnes du tableau
+            String[] columnNames = {"ID", "Name", "Age", "Email"};
+
+            // Récupération des données
+            DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0);
+            try {
+                List<Object[]> userInfo = connectionDAO.getUserInfo();
+
+                for (Object[] row : userInfo) {
+                    tableModel.addRow(row);
+                }
+            } catch (SQLException ex) {
+                JOptionPane.showMessageDialog(infoDialog, "Error retrieving user informations: " + ex.getMessage(),
+                        "Database Error", JOptionPane.ERROR_MESSAGE);
+                return; // Sortir si une erreur survient
+            }
+
+            // Création de la JTable
+            JTable table = new JTable(tableModel);
+
+            // Ajouter dans un JScrollPane
+            JScrollPane scrollPane = new JScrollPane(table);
+
+            // Ajouter le JScrollPane au JDialog
+            infoDialog.add(scrollPane, BorderLayout.CENTER);
+
+
+
+            registerButton.addActionListener(event -> {
+                // Ouvrir un formulaire ou une boîte de dialogue pour entrer les informations
+                String name = JOptionPane.showInputDialog(infoDialog, "Enter user name:");
+                String email = JOptionPane.showInputDialog(infoDialog, "Enter user email:");
+                String ageStr = JOptionPane.showInputDialog(infoDialog, "Enter user age:");
+
+                if (name != null && email != null && ageStr != null) {
+                    try {
+                        int age = Integer.parseInt(ageStr);
+                        UserDAO userDAO = new UserDAO();
+                        userDAO.createUser(name, email, age);
+                        JOptionPane.showMessageDialog(infoDialog, "User added successfully.");
+                        // Ajouter l'utilisateur au tableau (mise à jour en temps réel)
+                        Object[] newRow = {null, name, age, email}; // L'ID sera généré automatiquement par la base de données
+                        tableModel.addRow(newRow);  // Ajoute la ligne au modèle de la table
+                    } catch (SQLException | NumberFormatException ex) {
+                        JOptionPane.showMessageDialog(infoDialog, "Error adding user: " + ex.getMessage(),
+                                "Database Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            });
+
+            // Action pour le bouton "Edit user"
+            editButton.addActionListener(event -> {
+                // Vérifiez que l'utilisateur a sélectionné une ligne
+                int selectedRow = table.getSelectedRow();
+                if (selectedRow != -1) {
+                    // Récupérer les données de l'utilisateur sélectionné
+                    int userId = (int) table.getValueAt(selectedRow, 0); // Supposons que l'ID est dans la première colonne
+                    String currentName = (String) table.getValueAt(selectedRow, 1);
+                    String currentEmail = (String) table.getValueAt(selectedRow, 3);
+                    int currentAge = (int) table.getValueAt(selectedRow, 2);
+
+                    // Afficher une boîte de dialogue pour modifier les informations
+                    String newName = JOptionPane.showInputDialog(infoDialog, "Enter new name:", currentName);
+                    String newEmail = JOptionPane.showInputDialog(infoDialog, "Enter new email:", currentEmail);
+                    String newAgeStr = JOptionPane.showInputDialog(infoDialog, "Enter new age:", currentAge);
+
+                    if (newName != null && newEmail != null && newAgeStr != null) {
+                        try {
+                            int newAge = Integer.parseInt(newAgeStr);
+
+                            // Mise à jour dans la base de données
+                            UserDAO userDAO = new UserDAO();
+                            userDAO.updateUser(userId, "name", newName);  // Mettre à jour le nom
+                            userDAO.updateUser(userId, "email", newEmail);  // Mettre à jour l'email
+                            userDAO.updateUser(userId, "age", String.valueOf(newAge));  // Mettre à jour l'âge
+
+                            JOptionPane.showMessageDialog(infoDialog, "User updated successfully.");
+
+                            // Mettre à jour la JTable avec les nouvelles valeurs
+                            table.setValueAt(newName, selectedRow, 1);  // Met à jour la colonne du nom
+                            table.setValueAt(newEmail, selectedRow, 3);  // Met à jour la colonne de l'email
+                            table.setValueAt(newAge, selectedRow, 2);  // Met à jour la colonne de l'âge
+
+                        } catch (SQLException | NumberFormatException ex) {
+                            JOptionPane.showMessageDialog(infoDialog, "Error updating user: " + ex.getMessage(),
+                                    "Database Error", JOptionPane.ERROR_MESSAGE);
+                        }
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(infoDialog, "Please select a user to edit.");
+                }
+            });
+
+            // Action pour le bouton "Delete user"
+            deleteButton.addActionListener(event -> {
+                // Vérifiez que l'utilisateur a sélectionné une ligne
+                int selectedRow = table.getSelectedRow();
+                if (selectedRow != -1) {
+                    int userId = (int) table.getValueAt(selectedRow, 0); // Supposons que l'ID soit dans la première colonne
+
+                    // Demander une confirmation
+                    int confirm = JOptionPane.showConfirmDialog(infoDialog,
+                            "Are you sure you want to delete this user?", "Confirm Deletion", JOptionPane.YES_NO_OPTION);
+                    if (confirm == JOptionPane.YES_OPTION) {
+                        try {
+                            UserDAO userDAO = new UserDAO();
+                            userDAO.deleteUser(userId);
+                            JOptionPane.showMessageDialog(infoDialog, "User deleted successfully.");
+                            tableModel.removeRow(selectedRow);  // Retirer la ligne sélectionnée de la table
+                        } catch (SQLException ex) {
+                            JOptionPane.showMessageDialog(infoDialog, "Error deleting user: " + ex.getMessage(),
+                                    "Database Error", JOptionPane.ERROR_MESSAGE);
+                        }
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(infoDialog, "Please select a user to delete.");
+                }
+            });
+
+            // Rendre la boîte de dialogue visible
+            infoDialog.setVisible(true);
         }
     }
 
@@ -341,7 +529,6 @@ public class GUI extends JFrame {
 
         dialog.setVisible(true);
     }
-
     private void adminLoginSuccess(int adminId, Date date) {
         Date lastConnectionDate = null;
 
@@ -372,16 +559,14 @@ public class GUI extends JFrame {
         messagePanel.add(AnswerCheckedLabel);
 
         JButton viewRecords = new JButton("View attendance records");
+        showAttendance attendanceTable = new showAttendance();
+        viewRecords.addActionListener(attendanceTable);
         modificationPanel.add(viewRecords);
 
-        JButton registerUser = new JButton("Register new user");
-        modificationPanel.add(registerUser);
-
-        JButton editUser = new JButton("Edit user");
-        modificationPanel.add(editUser);
-
-        JButton deleteUser = new JButton("Delete user");
-        modificationPanel.add(deleteUser);
+        JButton managementUser = new JButton("Manage users");
+        manageUsers managementTable = new manageUsers();
+        managementUser.addActionListener(managementTable);
+        modificationPanel.add(managementUser);
 
         JButton checkButton = new JButton("Finish");
         checkButton.addActionListener(e -> {

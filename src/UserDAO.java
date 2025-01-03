@@ -39,12 +39,18 @@ public class UserDAO {
         return false;
     }
     public void updateUser(int id, String key, String value) throws SQLException {
-        String sql = "UPDATE users SET ? = ? WHERE id = ?";
+        // Construction de la requête SQL avec le nom de la colonne dynamique
+        String sql = "UPDATE users SET " + key + " = ? WHERE id = ?";
+
+        // Vérification que la clé est bien valide (au cas où)
+        if (!key.equals("name") && !key.equals("email") && !key.equals("age")) {
+            throw new IllegalArgumentException("Invalid column name: " + key);
+        }
+
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)){
-            statement . setString(1, key);
-            statement . setString(2, value);
-            statement . setInt(3, id);
+            statement . setString(1, value);
+            statement . setInt(2, id);
             statement . executeUpdate();
             System.out.println("User updated successfully.");
         }
