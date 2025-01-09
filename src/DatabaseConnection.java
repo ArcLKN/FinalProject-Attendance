@@ -5,7 +5,7 @@ import java.sql.SQLException;
 public class DatabaseConnection {
     private static final String URL = "jdbc:mysql://localhost:3306/db_time_attendance";
     private static final String USERNAME = "root";
-    static int user = 1;
+    static int user = 0;
 
     private static final String PASSWORD = (user == 0) ? "v)YpyX1;179`" : "1234";
 

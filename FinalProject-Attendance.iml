@@ -8,5 +8,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" exported="" name="mysql.connector.java" level="project" />
+    <orderEntry type="library" exported="" name="ai.djl.opencv" level="project" />
   </component>
 </module>
