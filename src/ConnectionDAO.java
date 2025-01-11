@@ -4,120 +4,117 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-/* connections TABLE
-CREATE TABLE connections(
-id INT AUTO_INCREMENT PRIMARY KEY,
-user_id INT NOT NULL,
-connection_date DATETIME NOT NULL,
-FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
- */
-
 public class ConnectionDAO {
-    public void createConnection(int user_id, Date connection_date) throws SQLException {
-        String sql = "INSERT INTO connections (user_id, connection_date) VALUES (?, ?)";
-        java.sql.Timestamp utilDate = new java.sql.Timestamp(connection_date.getTime());
 
+    // Create a new connection (check-in) for a user
+    public void createConnection(int userId, Date date) throws SQLException {
+        String query = "INSERT INTO t_lock_in_record (id, check_in_time) VALUES (?, ?)";
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+
+            preparedStatement.setInt(1, userId);
+            preparedStatement.setTimestamp(2, new java.sql.Timestamp(date.getTime()));
+            preparedStatement.executeUpdate();
+        }
+    }
+
+    // Insert a lock-in record (clock-in)
+    public void insertLockIn(int id, Date check_in_time) throws SQLException {
+        String sql = "INSERT INTO t_lock_in_record (id, check_in_time) VALUES (?, ?)";
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, user_id);
-            statement.setTimestamp(2, utilDate);
+            statement.setInt(1, id);
+            statement.setTimestamp(2, new Timestamp(check_in_time.getTime()));
             statement.executeUpdate();
-            System.out.println("Connection created successfully.");
         }
     }
-    public void deleteConnection(int id) throws SQLException {
-        String sql = "DELETE FROM connections WHERE id";
+
+    // Get the last connection (check-in) time for a user
+    public Date searchLastUsersConnection(int userId) throws SQLException {
+        String query = "SELECT check_in_time FROM t_lock_in_record WHERE id = ? ORDER BY check_in_time DESC LIMIT 1";
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement . setInt(1, id);
-            statement . executeUpdate();
-            System.out.println("Connection deleted successfully.");
-        }
-    }
-    public boolean searchConnection(int id) throws SQLException {
-        String sql = "SELECT * FROM connections WHERE id = ?";
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement . setInt(1, id);
-            ResultSet response = statement.executeQuery();
-            System.out.println("User searched successfully.");
-            if (response.next()) {
-                String connection_date = response.getString("id");
-                System.out.println("User's connection_date is: " + connection_date);
-                return true;
+             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+
+            preparedStatement.setInt(1, userId);
+
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getTimestamp("check_in_time");
             }
         }
-        return false;
+        return null;  // No previous connection found
     }
-    public boolean searchUsersConnections(int user_id) throws SQLException {
-        String sql = "SELECT * FROM connections WHERE user_id = ?";
+
+    // Get the latest lock-in time for a specific user
+    public Date getLatestLockIn(int id) throws SQLException {
+        String sql = "SELECT check_in_time FROM t_lock_in_record WHERE id = ? ORDER BY check_in_time DESC LIMIT 1";
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement . setInt(1, user_id);
-            ResultSet response = statement.executeQuery();
-            System.out.println("User searched successfully.");
-            if (response.next()) {
-                String connection_date = response.getString("connection_date");
-                System.out.println("User's connection_date is: " + connection_date);
-                return true;
-            }
-        }
-        return false;
-    }
-    public Date searchLastUsersConnection(int user_id) throws SQLException {
-        String sql = "SELECT * FROM connections WHERE user_id = ? ORDER BY connection_date DESC LIMIT 1";
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, user_id);
-            ResultSet response = statement.executeQuery();
-            System.out.println("User's last connection search executed successfully.");
-            if (response.next()) {
-                Timestamp lastConnectionTimestamp = response.getTimestamp("connection_date");
-                Date lastConnectionDate = new Date(lastConnectionTimestamp.getTime());
-                return lastConnectionDate;
+            statement.setInt(1, id);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getTimestamp("check_in_time");
+                }
             }
         }
         return null;
     }
-    public void updateConnection(int id, String key, String value) throws SQLException {
-        String sql = "UPDATE connections SET ? = ? WHERE id = ?";
+
+    // Insert start work time
+    public void insertStartWork(int id, Date start_work_time) throws SQLException {
+        String sql = "INSERT INTO t_work_time (id, startWork) VALUES (?, ?)";
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)){
-            statement . setString(1, key);
-            statement . setString(2, value);
-            statement . setInt(3, id);
-            statement . executeUpdate();
-            System.out.println("Connection updated successfully.");
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, id);
+            statement.setTimestamp(2, new Timestamp(start_work_time.getTime()));
+            statement.executeUpdate();
         }
     }
 
-    //ChatGPT
-    public List<Object[]> getUserConnections() throws SQLException {
-        String sql = "SELECT users.id, users.name, connections.connection_date " +
-                "FROM users " +
-                "INNER JOIN connections ON users.id = connections.user_id " +
-                "ORDER BY connections.connection_date DESC";
+    // Get the start work time for a specific user
+    public Date getStartWork(int id) throws SQLException {
+        String sql = "SELECT startWork FROM t_work_time WHERE id = ? ORDER BY startWork DESC LIMIT 1";
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, id);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getTimestamp("startWork");
+                }
+            }
+        }
+        return null;
+    }
 
-        List<Object[]> userConnections = new ArrayList<>();
+    public List<Object[]> getUserAttendanceRecords() throws SQLException {
+        List<Object[]> records = new ArrayList<>();
+        String sql = "SELECT t_emp.id, t_emp.nameEmp, t_lock_in_record.check_in_time " +
+                "FROM t_emp " +
+                "JOIN t_lock_in_record ON t_emp.id = t_lock_in_record.id " +
+                "ORDER BY t_lock_in_record.check_in_time DESC";
+
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
 
             while (resultSet.next()) {
-                int id = resultSet.getInt("id");
-                String name = resultSet.getString("name");
-                Timestamp timestamp = resultSet.getTimestamp("connection_date");
-                Date connectionDate = new Date(timestamp.getTime());
+                int userId = resultSet.getInt("id");
+                String userName = resultSet.getString("nameEmp");
+                Timestamp checkInTime = resultSet.getTimestamp("check_in_time");
 
-                userConnections.add(new Object[]{id, name, connectionDate});
+                // Format the check-in time to a readable format
+                String formattedCheckInTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(checkInTime);
+
+                // Add the data to the list
+                records.add(new Object[]{userId, userName, formattedCheckInTime});
             }
         }
-        return userConnections;
+        return records;
     }
 
+    // Get user info (adjusted for the correct columns)
     public List<Object[]> getUserInfo() throws SQLException {
-        String sql = "SELECT users.id, users.name, users.age, users.email FROM users ";
+        String sql = "SELECT t_emp.id, t_emp.nameEmp, t_emp.codeEmp FROM t_emp";
 
         List<Object[]> userInfo = new ArrayList<>();
         try (Connection connection = DatabaseConnection.getConnection();
@@ -126,11 +123,10 @@ public class ConnectionDAO {
 
             while (resultSet.next()) {
                 int id = resultSet.getInt("id");
-                String name = resultSet.getString("name");
-                int age = resultSet.getInt("age");
-                String email = resultSet.getString("email");
+                String name = resultSet.getString("nameEmp");
+                String code = resultSet.getString("codeEmp");
 
-                userInfo.add(new Object[]{id, name, age, email});
+                userInfo.add(new Object[]{id, name, code});
             }
         }
         return userInfo;

@@ -7,7 +7,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-import java.sql.SQLException;
 import java.util.Objects;
 import java.util.List;
 
@@ -222,20 +221,45 @@ public class GUI extends JFrame {
             if (!doUserExists) {
                 adminAnswerLabel.setText("This user ID does not exist.");
                 adminLabelColor = Color.RED;
-                adminAnswerLabel . setForeground(adminLabelColor);
-                adminAnswerLabel . setVisible(true);
+                adminAnswerLabel.setForeground(adminLabelColor);
+                adminAnswerLabel.setVisible(true);
             } else if (!Objects.equals(IdFieldPswd.getText(), isPasswordTrue)) {
                 adminAnswerLabel.setText("Wrong password or ID.");
                 adminLabelColor = Color.RED;
-                adminAnswerLabel . setForeground(adminLabelColor);
-                adminAnswerLabel . setVisible(true);
+                adminAnswerLabel.setForeground(adminLabelColor);
+                adminAnswerLabel.setVisible(true);
             } else {
                 adminLoginSuccess(adminId, date);
+
+                // Check if the admin is clocked in or not (check t_lock_in_record)
+                Date latestLockIn = null;
+                try {
+                    latestLockIn = connectionDAO.getLatestLockIn(adminId);
+                } catch (SQLException ex) {
+                    throw new RuntimeException(ex);
+                }
+                if (latestLockIn == null) {
+                    // Admin has not clocked in yet, clock in and store the start work time
+                    try {
+                        connectionDAO.insertLockIn(adminId, date);
+                    } catch (SQLException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                    try {
+                        connectionDAO.insertStartWork(adminId, date);
+                    } catch (SQLException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                    System.out.println("Admin clocked in at " + date + " and start work time recorded.");
+                } else {
+                    // Admin is already clocked in, do nothing
+                    System.out.println("Admin is already clocked in at " + latestLockIn);
+                }
             }
         }
     }
 
-    private class showAttendance implements ActionListener {
+    private class ShowAttendance implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
             JDialog attendanceDialog = new JDialog(GUI.this, "Attendance Records", true);
@@ -243,145 +267,118 @@ public class GUI extends JFrame {
             attendanceDialog.setLocationRelativeTo(GUI.this);
             attendanceDialog.setLayout(new BorderLayout());
 
-            // Colonnes du tableau
-            String[] columnNames = {"ID", "Name", "Connection Date"};
+            // Columns for the table
+            String[] columnNames = {"ID", "Name", "Check-in Date"};
 
-            // Récupération des données
+            // Retrieve the data
             DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0);
             try {
-                List<Object[]> userConnections = connectionDAO.getUserConnections();
-
+                List<Object[]> userConnections = connectionDAO.getUserAttendanceRecords();
                 for (Object[] row : userConnections) {
                     tableModel.addRow(row);
                 }
             } catch (SQLException ex) {
-                JOptionPane.showMessageDialog(attendanceDialog, "Error retrieving user connections: " + ex.getMessage(),
+                JOptionPane.showMessageDialog(attendanceDialog, "Error retrieving user attendance records: " + ex.getMessage(),
                         "Database Error", JOptionPane.ERROR_MESSAGE);
-                return; // Sortir si une erreur survient
+                return; // Exit if an error occurs
             }
 
-            // Création de la JTable
+            // Create the JTable
             JTable table = new JTable(tableModel);
 
-            // Ajouter dans un JScrollPane
+            // Add it to a JScrollPane
             JScrollPane scrollPane = new JScrollPane(table);
 
-            // Ajouter le JScrollPane au JDialog
+            // Add the JScrollPane to the JDialog
             attendanceDialog.add(scrollPane, BorderLayout.CENTER);
 
-            // Rendre la boîte de dialogue visible
+            // Show the dialog
             attendanceDialog.setVisible(true);
         }
     }
-    private class manageUsers implements ActionListener {
+    private class ManageUsers implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            JDialog infoDialog = new JDialog(GUI.this, "Users informations", true);
+            JDialog infoDialog = new JDialog(GUI.this, "Users Information", true);
             infoDialog.setSize(600, 400);
             infoDialog.setLocationRelativeTo(GUI.this);
             infoDialog.setLayout(new BorderLayout());
 
-            // Créer un JPanel pour contenir les boutons
+            // JPanel for buttons
             JPanel buttonPanel = new JPanel();
-            buttonPanel.setLayout(new FlowLayout()); // ou GridLayout, BoxLayout, etc.
+            buttonPanel.setLayout(new FlowLayout());
 
-            // Créer les boutons
+            // Buttons for adding, editing, and deleting users
             JButton registerButton = new JButton("Add user");
             JButton editButton = new JButton("Edit user");
             JButton deleteButton = new JButton("Delete user");
 
-            // Ajouter les boutons au JPanel
             buttonPanel.add(registerButton);
             buttonPanel.add(editButton);
             buttonPanel.add(deleteButton);
 
-            // Ajouter le JPanel au JDialog dans la zone sud (SOUTH)
             infoDialog.add(buttonPanel, BorderLayout.SOUTH);
 
-            // Colonnes du tableau
-            String[] columnNames = {"ID", "Name", "Age", "Email"};
+            // Table columns
+            String[] columnNames = {"ID", "Name", "Code"};
 
-            // Récupération des données
+            // Retrieve the data
             DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0);
             try {
                 List<Object[]> userInfo = connectionDAO.getUserInfo();
-
                 for (Object[] row : userInfo) {
                     tableModel.addRow(row);
                 }
             } catch (SQLException ex) {
-                JOptionPane.showMessageDialog(infoDialog, "Error retrieving user informations: " + ex.getMessage(),
+                JOptionPane.showMessageDialog(infoDialog, "Error retrieving user information: " + ex.getMessage(),
                         "Database Error", JOptionPane.ERROR_MESSAGE);
-                return; // Sortir si une erreur survient
+                return;
             }
 
-            // Création de la JTable
             JTable table = new JTable(tableModel);
-
-            // Ajouter dans un JScrollPane
             JScrollPane scrollPane = new JScrollPane(table);
-
-            // Ajouter le JScrollPane au JDialog
             infoDialog.add(scrollPane, BorderLayout.CENTER);
 
-
-
+            // Register Button Action
             registerButton.addActionListener(event -> {
-                // Ouvrir un formulaire ou une boîte de dialogue pour entrer les informations
                 String name = JOptionPane.showInputDialog(infoDialog, "Enter user name:");
-                String email = JOptionPane.showInputDialog(infoDialog, "Enter user email:");
-                String ageStr = JOptionPane.showInputDialog(infoDialog, "Enter user age:");
+                String code = JOptionPane.showInputDialog(infoDialog, "Enter user code:");
 
-                if (name != null && email != null && ageStr != null) {
+                if (name != null && code != null) {
                     try {
-                        int age = Integer.parseInt(ageStr);
-                        UserDAO userDAO = new UserDAO();
-                        userDAO.createUser(name, email, age);
+                        userDAO.createUser(name, code);  // Adjusted to use name and code
                         JOptionPane.showMessageDialog(infoDialog, "User added successfully.");
-                        // Ajouter l'utilisateur au tableau (mise à jour en temps réel)
-                        Object[] newRow = {null, name, age, email}; // L'ID sera généré automatiquement par la base de données
-                        tableModel.addRow(newRow);  // Ajoute la ligne au modèle de la table
-                    } catch (SQLException | NumberFormatException ex) {
+                        Object[] newRow = {null, name, code}; // Adjusted to match database columns
+                        tableModel.addRow(newRow);
+                    } catch (SQLException ex) {
                         JOptionPane.showMessageDialog(infoDialog, "Error adding user: " + ex.getMessage(),
                                 "Database Error", JOptionPane.ERROR_MESSAGE);
                     }
                 }
             });
 
-            // Action pour le bouton "Edit user"
+            // Edit Button Action
             editButton.addActionListener(event -> {
-                // Vérifiez que l'utilisateur a sélectionné une ligne
                 int selectedRow = table.getSelectedRow();
                 if (selectedRow != -1) {
-                    // Récupérer les données de l'utilisateur sélectionné
-                    int userId = (int) table.getValueAt(selectedRow, 0); // Supposons que l'ID est dans la première colonne
+                    int userId = (int) table.getValueAt(selectedRow, 0);
                     String currentName = (String) table.getValueAt(selectedRow, 1);
-                    String currentEmail = (String) table.getValueAt(selectedRow, 3);
-                    int currentAge = (int) table.getValueAt(selectedRow, 2);
+                    String currentCode = (String) table.getValueAt(selectedRow, 2);
 
-                    // Afficher une boîte de dialogue pour modifier les informations
                     String newName = JOptionPane.showInputDialog(infoDialog, "Enter new name:", currentName);
-                    String newEmail = JOptionPane.showInputDialog(infoDialog, "Enter new email:", currentEmail);
-                    String newAgeStr = JOptionPane.showInputDialog(infoDialog, "Enter new age:", currentAge);
+                    String newCode = JOptionPane.showInputDialog(infoDialog, "Enter new code:", currentCode);
 
-                    if (newName != null && newEmail != null && newAgeStr != null) {
+                    if (newName != null && newCode != null) {
                         try {
-                            int newAge = Integer.parseInt(newAgeStr);
-
-                            // Mise à jour dans la base de données
-                            UserDAO userDAO = new UserDAO();
-                            userDAO.updateUser(userId, "name", newName);  // Mettre à jour le nom
-                            userDAO.updateUser(userId, "email", newEmail);  // Mettre à jour l'email
-                            userDAO.updateUser(userId, "age", String.valueOf(newAge));  // Mettre à jour l'âge
+                            userDAO.updateUser(userId, "nameEmp", newName);
+                            userDAO.updateUser(userId, "codeEmp", newCode);
 
                             JOptionPane.showMessageDialog(infoDialog, "User updated successfully.");
 
-                            // Mettre à jour la JTable avec les nouvelles valeurs
-                            table.setValueAt(newName, selectedRow, 1);  // Met à jour la colonne du nom
-                            table.setValueAt(newEmail, selectedRow, 3);  // Met à jour la colonne de l'email
-                            table.setValueAt(newAge, selectedRow, 2);  // Met à jour la colonne de l'âge
+                            table.setValueAt(newName, selectedRow, 1);
+                            table.setValueAt(newCode, selectedRow, 2);
 
-                        } catch (SQLException | NumberFormatException ex) {
+                        } catch (SQLException ex) {
                             JOptionPane.showMessageDialog(infoDialog, "Error updating user: " + ex.getMessage(),
                                     "Database Error", JOptionPane.ERROR_MESSAGE);
                         }
@@ -391,22 +388,19 @@ public class GUI extends JFrame {
                 }
             });
 
-            // Action pour le bouton "Delete user"
+            // Delete Button Action
             deleteButton.addActionListener(event -> {
-                // Vérifiez que l'utilisateur a sélectionné une ligne
                 int selectedRow = table.getSelectedRow();
                 if (selectedRow != -1) {
-                    int userId = (int) table.getValueAt(selectedRow, 0); // Supposons que l'ID soit dans la première colonne
+                    int userId = (int) table.getValueAt(selectedRow, 0);
 
-                    // Demander une confirmation
                     int confirm = JOptionPane.showConfirmDialog(infoDialog,
                             "Are you sure you want to delete this user?", "Confirm Deletion", JOptionPane.YES_NO_OPTION);
                     if (confirm == JOptionPane.YES_OPTION) {
                         try {
-                            UserDAO userDAO = new UserDAO();
                             userDAO.deleteUser(userId);
                             JOptionPane.showMessageDialog(infoDialog, "User deleted successfully.");
-                            tableModel.removeRow(selectedRow);  // Retirer la ligne sélectionnée de la table
+                            tableModel.removeRow(selectedRow);
                         } catch (SQLException ex) {
                             JOptionPane.showMessageDialog(infoDialog, "Error deleting user: " + ex.getMessage(),
                                     "Database Error", JOptionPane.ERROR_MESSAGE);
@@ -417,7 +411,6 @@ public class GUI extends JFrame {
                 }
             });
 
-            // Rendre la boîte de dialogue visible
             infoDialog.setVisible(true);
         }
     }
@@ -425,39 +418,40 @@ public class GUI extends JFrame {
     private class showMain implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            mainPanel . setVisible(true);
-            secondaryPanel . setVisible(false);
+            mainPanel.setVisible(true);
+            secondaryPanel.setVisible(false);
         }
     }
     private class showSecondary implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            mainPanel . setVisible(false);
-            secondaryPanel . setVisible(true);
+            mainPanel.setVisible(false);
+            secondaryPanel.setVisible(true);
         }
     }
 
     private void employeeLoginSuccess(int userId, Date date) {
         Date lastConnectionDate = null;
 
-        //Dialog creation
-        JDialog dialog = new JDialog(GUI.this, "Login successed", true);
+        // Dialog creation
+        JDialog dialog = new JDialog(GUI.this, "Login Successful", true);
         dialog.setSize(300, 200);
-        dialog.setLocationRelativeTo(GUI.this); // Center relative to main panel
+        dialog.setLocationRelativeTo(GUI.this);
         dialog.setLayout(new BorderLayout());
 
-        //Welcome message
-        JLabel messageLabel = new JLabel("Welcome " + userDAO.getUserName(Integer.parseInt(IdField.getText())), JLabel.CENTER);
+        // Welcome message
+        String userName = userDAO.getUserName(userId); // Fetch the user name
+        JLabel messageLabel = new JLabel("Welcome " + userName, JLabel.CENTER);
         dialog.add(messageLabel, BorderLayout.NORTH);
 
-        JLabel AnswerCheckedLabel = new JLabel("", JLabel.CENTER);
-        Color AnswerCheckedColor;
-        dialog.add(AnswerCheckedLabel, BorderLayout.CENTER);
-        AnswerCheckedLabel.setVisible(false);
+        JLabel answerLabel = new JLabel("", JLabel.CENTER);
+        Color answerColor;
+        dialog.add(answerLabel, BorderLayout.CENTER);
+        answerLabel.setVisible(false);
 
-        JButton checkButton = new JButton("Check in");
+        JButton checkButton = new JButton("Check-in");
         checkButton.addActionListener(e -> {
-            dialog.dispose(); // Fermer le dialogue
+            dialog.dispose();
             this.dispose();
             System.exit(0);
         });
@@ -465,37 +459,44 @@ public class GUI extends JFrame {
         buttonPanel.add(checkButton);
         dialog.add(buttonPanel, BorderLayout.SOUTH);
 
+        // Retrieve the last sign-in record for the user
         try {
             lastConnectionDate = connectionDAO.searchLastUsersConnection(userId);
         } catch (SQLException ex) {
-            throw new RuntimeException(ex);
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(dialog, "Error checking last sign-in: " + ex.getMessage(),
+                    "Database Error", JOptionPane.ERROR_MESSAGE);
+            return;
         }
+
+        // If the user has signed in today, do not allow another sign-in
         if (lastConnectionDate != null) {
-            //User is checking in for the first time today
             Date currentDate = new Date();
             SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
             String lastConnectionDay = dateFormatter.format(lastConnectionDate);
             String currentDay = dateFormatter.format(currentDate);
-            System.out.println("User's last connection date is: " + lastConnectionDate);
-            System.out.println("Last connection day: " + lastConnectionDay);
 
-            //If user already checked in today
-            boolean hasUserAlreadySignedIn = lastConnectionDay.equals(currentDay);
-            if (hasUserAlreadySignedIn) {
-                //Not sure if it works
+            // Check if the user has already signed in today
+            if (lastConnectionDay.equals(currentDay)) {
                 JOptionPane.showMessageDialog(dialog,
-                        "This user has already signed-in today.",
+                        "This user has already signed in today.",
                         "Check-in Error",
                         JOptionPane.WARNING_MESSAGE);
-                return;
+                return; // Exit if already signed in today
             }
         }
 
+        // Create a new clock-in record
         try {
-            connectionDAO.createConnection(userId, date);
+            connectionDAO.createConnection(userId, date); // Add the clock-in time to the database
         } catch (SQLException exception) {
-            throw new RuntimeException(exception);
+            exception.printStackTrace();
+            JOptionPane.showMessageDialog(dialog, "Error creating new sign-in: " + exception.getMessage(),
+                    "Database Error", JOptionPane.ERROR_MESSAGE);
+            return;
         }
+
+        // Check if the user is late based on the fixed time (e.g., 10:00 AM)
         SimpleDateFormat hourFormatter = new SimpleDateFormat("HH:mm:ss");
         String userHourStr = hourFormatter.format(date);
         Date userHour;
@@ -503,39 +504,51 @@ public class GUI extends JFrame {
         try {
             userHour = hourFormatter.parse(userHourStr);
         } catch (ParseException ex) {
-            throw new RuntimeException(ex);
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(dialog, "Error parsing sign-in time: " + ex.getMessage(),
+                    "Time Parsing Error", JOptionPane.ERROR_MESSAGE);
+            return;
         }
+
+        // Fixed hour (e.g., 10:00 AM)
         String fixedHourStr = "10:00:00";
         Date fixedHour;
 
         try {
             fixedHour = hourFormatter.parse(fixedHourStr);
         } catch (ParseException ex) {
-            throw new RuntimeException(ex);
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(dialog, "Error parsing fixed hour: " + ex.getMessage(),
+                    "Time Parsing Error", JOptionPane.ERROR_MESSAGE);
+            return;
         }
+
+        // Check if the user is late
         boolean isUserLate = userHour.after(fixedHour);
 
         if (isUserLate) {
-            AnswerCheckedLabel.setText("You are late.");
-            AnswerCheckedColor = Color.ORANGE;
-            AnswerCheckedLabel . setForeground(AnswerCheckedColor);
-            AnswerCheckedLabel . setVisible(true);
+            answerLabel.setText("You are late.");
+            answerColor = Color.ORANGE;
+            answerLabel.setForeground(answerColor);
+            answerLabel.setVisible(true);
         } else {
-            signInAnswerLabel.setText("You signed-in successfully!");
-            signInLabelColor = Color.GREEN;
-            signInAnswerLabel . setForeground(signInLabelColor);
-            signInAnswerLabel . setVisible(true);
+            answerLabel.setText("You signed in successfully!");
+            answerColor = Color.GREEN;
+            answerLabel.setForeground(answerColor);
+            answerLabel.setVisible(true);
         }
 
+        // Display the dialog
         dialog.setVisible(true);
     }
+
     private void adminLoginSuccess(int adminId, Date date) {
         Date lastConnectionDate = null;
 
-        //Dialog creation
-        JDialog dialog = new JDialog(GUI.this, "Admin login successed", true);
+        // Dialog creation
+        JDialog dialog = new JDialog(GUI.this, "Admin Login Successful", true);
         dialog.setSize(400, 300);
-        dialog.setLocationRelativeTo(GUI.this); // Center relative to main panel
+        dialog.setLocationRelativeTo(GUI.this);
         dialog.setLayout(new BorderLayout());
 
         JPanel messagePanel = new JPanel();
@@ -546,27 +559,25 @@ public class GUI extends JFrame {
         modificationPanel.setLayout(new BoxLayout(modificationPanel, BoxLayout.Y_AXIS));
         dialog.add(modificationPanel, BorderLayout.CENTER);
 
-        // Welcome message
-        JLabel messageLabel = new JLabel("Welcome " + userDAO.getUserName(Integer.parseInt(IdFieldAdmin.getText())));
-        messageLabel.setAlignmentX(Component.CENTER_ALIGNMENT); // Center alignment
+        JLabel messageLabel = new JLabel("Welcome " + userDAO.getUserName(adminId));
+        messageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         messagePanel.add(messageLabel);
 
-        // Late or success message
-        JLabel AnswerCheckedLabel = new JLabel("");
-        AnswerCheckedLabel.setAlignmentX(Component.CENTER_ALIGNMENT); // Center alignment
-        Color AnswerCheckedColor;
-        AnswerCheckedLabel.setVisible(false);
-        messagePanel.add(AnswerCheckedLabel);
+        JLabel answerLabel = new JLabel("");
+        answerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        Color answerColor;
+        answerLabel.setVisible(false);
+        messagePanel.add(answerLabel);
 
-        JButton viewRecords = new JButton("View attendance records");
-        showAttendance attendanceTable = new showAttendance();
+        JButton viewRecords = new JButton("View Attendance Records");
+        ShowAttendance attendanceTable = new ShowAttendance();
         viewRecords.addActionListener(attendanceTable);
         modificationPanel.add(viewRecords);
 
-        JButton managementUser = new JButton("Manage users");
-        manageUsers managementTable = new manageUsers();
-        managementUser.addActionListener(managementTable);
-        modificationPanel.add(managementUser);
+        JButton manageUsersButton = new JButton("Manage Users");
+        ManageUsers managementTable = new ManageUsers();
+        manageUsersButton.addActionListener(managementTable);
+        modificationPanel.add(manageUsersButton);
 
         JButton checkButton = new JButton("Finish");
         checkButton.addActionListener(e -> {
@@ -583,20 +594,17 @@ public class GUI extends JFrame {
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }
+
         if (lastConnectionDate != null) {
-            //User is checking in for the first time today
             Date currentDate = new Date();
             SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
             String lastConnectionDay = dateFormatter.format(lastConnectionDate);
             String currentDay = dateFormatter.format(currentDate);
-            System.out.println("User's last connection date is: " + lastConnectionDate);
-            System.out.println("Last connection day: " + lastConnectionDay);
 
-            //If user already checked in today
-            boolean hasUserAlreadySignedIn = lastConnectionDay.equals(currentDay);
-            if (hasUserAlreadySignedIn) {
+            boolean hasAdminAlreadySignedIn = lastConnectionDay.equals(currentDay);
+            if (hasAdminAlreadySignedIn) {
                 JOptionPane.showMessageDialog(dialog,
-                        "This user has already signed-in today.",
+                        "This admin has already signed in today.",
                         "Check-in Error",
                         JOptionPane.WARNING_MESSAGE);
                 return;
@@ -608,15 +616,17 @@ public class GUI extends JFrame {
         } catch (SQLException exception) {
             throw new RuntimeException(exception);
         }
+
         SimpleDateFormat hourFormatter = new SimpleDateFormat("HH:mm:ss");
-        String userHourStr = hourFormatter.format(date);
-        Date userHour;
+        String adminHourStr = hourFormatter.format(date);
+        Date adminHour;
 
         try {
-            userHour = hourFormatter.parse(userHourStr);
+            adminHour = hourFormatter.parse(adminHourStr);
         } catch (ParseException ex) {
             throw new RuntimeException(ex);
         }
+
         String fixedHourStr = "10:00:00";
         Date fixedHour;
 
@@ -625,23 +635,21 @@ public class GUI extends JFrame {
         } catch (ParseException ex) {
             throw new RuntimeException(ex);
         }
-        boolean isUserLate = userHour.after(fixedHour);
 
-        if (isUserLate) {
-            AnswerCheckedLabel.setText("You are late.");
-            AnswerCheckedColor = Color.ORANGE;
-            AnswerCheckedLabel . setForeground(AnswerCheckedColor);
-            AnswerCheckedLabel . setVisible(true);
+        boolean isAdminLate = adminHour.after(fixedHour);
+
+        if (isAdminLate) {
+            answerLabel.setText("You are late.");
+            answerColor = Color.ORANGE;
+            answerLabel.setForeground(answerColor);
+            answerLabel.setVisible(true);
         } else {
-            AnswerCheckedLabel.setText("You signed-in successfully!");
-            AnswerCheckedColor = Color.GREEN;
-            AnswerCheckedLabel . setForeground(AnswerCheckedColor);
-            AnswerCheckedLabel . setVisible(true);
+            answerLabel.setText("You signed in successfully!");
+            answerColor = Color.GREEN;
+            answerLabel.setForeground(answerColor);
+            answerLabel.setVisible(true);
         }
 
         dialog.setVisible(true);
-    }
-
-    public static void main(String[] args) {
     }
 }
