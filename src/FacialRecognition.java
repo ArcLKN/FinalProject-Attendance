@@ -2,10 +2,14 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-
 import javax.swing.*;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
@@ -18,6 +22,12 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
 import org.opencv.objdetect.CascadeClassifier;
 
+
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+
 public class FacialRecognition extends JFrame {
 
     private JLabel cameraScreen;
@@ -29,6 +39,21 @@ public class FacialRecognition extends JFrame {
     private CascadeClassifier faceDetector;
 
     private volatile boolean clicked = false;
+
+    private Map<String, Mat> knownFaces;
+    private Map<String, Mat> knownFaceEmbeddings = new HashMap<>();
+
+    private String extractNameWithoutNumber(String fileName) {
+        // Expression régulière pour capturer le nom avant le numéro
+        Pattern pattern = Pattern.compile("([a-zA-Z]+)(\\d+)?");
+        Matcher matcher = pattern.matcher(fileName);
+
+        if (matcher.find()) {
+            // Le groupe 1 est le nom sans le numéro
+            return matcher.group(1);
+        }
+        return "Unknown";  // Retourne "Inconnu" si aucun nom valide n'est trouvé
+    }
 
     public FacialRecognition() {
         setLayout(null);
@@ -51,6 +76,53 @@ public class FacialRecognition extends JFrame {
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setVisible(true);
+
+        knownFaces = new HashMap<>();
+        loadKnownFaces();
+    }
+
+    private void loadKnownFaces() {
+        // Load images of known individuals and compute embeddings (dummy example)
+        File[] files = new File("known_faces").listFiles();
+        if (files != null) {
+            for (File file : files) {
+                String name = file.getName().replace(".jpg", "");
+                Mat face = Imgcodecs.imread(file.getAbsolutePath());
+                knownFaces.put(name, face); // Add to the map (actual embeddings are better)
+            }
+        }
+    }
+
+    private String recognizeFace(Mat faceRegion) {
+        // Resize the captured face region to match the size of known faces (e.g., 100x100)
+        int width = 100;  // Example size, adjust as needed
+        int height = 100;
+        Mat resizedFace = new Mat();
+        Imgproc.resize(faceRegion, resizedFace, new org.opencv.core.Size(width, height));
+
+        double minDistance = Double.MAX_VALUE;
+        String closestName = "Unknown";
+
+        for (Map.Entry<String, Mat> entry : knownFaces.entrySet()) {
+            String name = entry.getKey();
+            Mat knownFace = entry.getValue();
+
+            // Resize the known face to the same size as the captured face
+            Mat resizedKnownFace = new Mat();
+            Imgproc.resize(knownFace, resizedKnownFace, new org.opencv.core.Size(width, height));
+
+            // Calculate similarity (using norm)
+            double distance = Core.norm(resizedFace, resizedKnownFace, Core.NORM_L2);
+            System.out.println("Distance: " + distance + ", " + minDistance + " Name: " + name);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestName = name;
+            }
+        }
+        if (minDistance > 6000) {
+            return "Unknown";
+        }
+        return closestName;
     }
 
     public void startCamera() {
@@ -90,6 +162,11 @@ public class FacialRecognition extends JFrame {
                 // Draw rectangles around detected faces
                 for (Rect face : facesArray) {
                     Imgproc.rectangle(image, face.tl(), face.br(), new Scalar(0, 255, 0), 2);
+                    Mat faceRegion = new Mat(image, face);
+                    String name = recognizeFace(faceRegion);
+                    name = extractNameWithoutNumber(name);
+                    Imgproc.putText(image, name, new org.opencv.core.Point(face.x, face.y - 10),
+                            Imgproc.FONT_HERSHEY_SIMPLEX, 0.8, new Scalar(0, 255, 0), 2);
                 }
 
                 final MatOfByte buf = new MatOfByte();
@@ -98,19 +175,30 @@ public class FacialRecognition extends JFrame {
                 imageData = buf.toArray();
 
                 icon = new ImageIcon(imageData);
-                    ImageIcon finalIcon = icon;
-                    SwingUtilities.invokeLater(() -> cameraScreen.setIcon(finalIcon));
+                ImageIcon finalIcon = icon;
+                SwingUtilities.invokeLater(() -> cameraScreen.setIcon(finalIcon));
                 if (clicked) {
                     System.out.println("Capture");
                     String name;
-                    // String name = JOptionPane.showInputDialog("Enter image name:");
                     int i = 0;
                     for (Rect face : facesArray) {
                         if (face.width > 100 && face.height > 100) {
                             Imgproc.rectangle(image, face.tl(), face.br(), new Scalar(0, 255, 0), 2);
                             Mat faceRegion = new Mat(image, face);
-                            name = new SimpleDateFormat("yyyy-MM-dd-hh-mm-ss").format(new Date());
-                            Imgcodecs.imwrite("images/" + name + "-" + i + ".jpg", faceRegion );
+
+                            String previewName = recognizeFace(faceRegion);
+                            previewName = extractNameWithoutNumber(previewName);
+
+                            Image faceImage = matToBufferedImage(faceRegion);
+                            name = openNamingWindow(faceImage, i, previewName);
+
+                            if (name != null || !name.isEmpty()) {
+                                Imgcodecs.imwrite("known_faces/" + name + ".jpg", faceRegion );
+                            }
+                            else {
+                                name = new SimpleDateFormat("yyyy-MM-dd-hh-mm-ss").format(new Date());
+                                Imgcodecs.imwrite("images/" + name + "-" + i + ".jpg", faceRegion);
+                            }
                             i++;
                         }
                     }
@@ -118,6 +206,59 @@ public class FacialRecognition extends JFrame {
                 }
             }
         }
+    }
+
+    private String openNamingWindow(Image faceImage, int index, String previewName) {
+        final String[] result = {null};
+
+        // Create a dialog
+        JDialog dialog = new JDialog((Frame) null, "Name Face " + index, true);
+        dialog.setLayout(new BorderLayout());
+        dialog.setSize(400, 300);
+        dialog.setResizable(false);
+
+        // Add image preview
+        JLabel imageLabel = new JLabel(new ImageIcon(faceImage));
+        dialog.add(imageLabel, BorderLayout.CENTER);
+
+        JLabel previewNameLabel = new JLabel(previewName);
+        previewNameLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        dialog.add(previewNameLabel, BorderLayout.NORTH);
+
+        // Add input field for name
+        JPanel inputPanel = new JPanel(new FlowLayout());
+        JTextField nameField = new JTextField(20);
+        JButton saveButton = new JButton("Save");
+        inputPanel.add(new JLabel("Name: "));
+        inputPanel.add(nameField);
+        inputPanel.add(saveButton);
+
+        dialog.add(inputPanel, BorderLayout.SOUTH);
+
+        // Add action listener to the save button
+        saveButton.addActionListener(e -> {
+            result[0] = nameField.getText(); // Get the name from the text field
+            dialog.dispose(); // Close the dialog
+        });
+
+        dialog.setVisible(true); // Show the dialog
+        return result[0]; // Return the entered name
+    }
+
+    private Image matToBufferedImage(Mat mat) {
+        MatOfByte matOfByte = new MatOfByte();
+        Imgcodecs.imencode(".jpg", mat, matOfByte);
+        byte[] byteArray = matOfByte.toArray();
+        BufferedImage bufferedImage = null;
+
+        try {
+            InputStream in = new ByteArrayInputStream(byteArray);
+            bufferedImage = ImageIO.read(in);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return bufferedImage;
     }
 
     public static void main(String[] args) {
@@ -138,6 +279,11 @@ public class FacialRecognition extends JFrame {
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
+                        try {
+                            Thread.sleep(33); // ~30 FPS
+                        } catch (InterruptedException ex) {
+                            ex.printStackTrace();
+                        }
                         facialRecognition.startCamera();
                     }
                 }).start();
