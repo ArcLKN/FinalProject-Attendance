@@ -152,7 +152,7 @@ public class FacialRecognition extends JFrame {
             String name = entry.getKey();
             Mat knownFace = entry.getValue();
 
-            // Calculate similarity (using norm)
+            // Calculate similarity (using norm), calculate the magnitude of the difference between two matrices.
             double distance = Core.norm(resizedFace, knownFace, Core.NORM_L2);
             // System.out.println("Distance: " + distance + ", " + minDistance + " Name: " + name);
             if (distance < minDistance) {
@@ -169,6 +169,7 @@ public class FacialRecognition extends JFrame {
 
     // Main method.
     // It runs the camera and changes the image each frame.
+    // It identify faces on each camera frames and put a green rect on them.
     // Also check if Button is clicked.
     public void startCamera() throws SQLException {
         // Initialize the camera of index 0.

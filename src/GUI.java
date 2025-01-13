@@ -53,7 +53,7 @@ public class GUI extends JFrame {
         mainPanel . setLayout ( null ) ;
         mainPanel.setBackground(Color.WHITE);
 
-        //Date and time
+        //Date and time with timer to keep it actual.
         timeFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
         timeLabel = new JLabel();
         mainPanel.add(timeLabel);
@@ -62,13 +62,13 @@ public class GUI extends JFrame {
         int panelWidth = mainPanel.getWidth();
         timeLabel.setBounds(32, 40, 200, 30);
 
-        //Facial Recognition Button
+        //Facial Recognition Button to register new faces.
         JButton registerFaceIdButton = new JButton("New Face ID");
         registerFaceIdButton.setBounds(270, 40, 110, 30);
         registerFaceIdButton.addActionListener(new registerFaceIdAction());
         mainPanel.add(registerFaceIdButton);
 
-        //Facial Connexion Button
+        //Facial Connexion Button to sign in with your face.
         JButton faceIdButton = new JButton("Face ID");
         faceIdButton.setBounds(260 , 172 , 80 , 40) ;
         faceIdButton.addActionListener(new showFaceIdAction());
@@ -86,7 +86,7 @@ public class GUI extends JFrame {
         IdField . getText () ;
         mainPanel . add ( IdField ) ;
 
-        //Sign in button
+        //Sign in button to register atteendance manually by entering id.
         JButton signInButton = new JButton ("Sign in") ; //Interface UI button
         signInButton . setBounds (150 , 172 , 100 , 40) ;
         signIn signInButtonAction = new signIn(); //Creating an object from the signIn class
@@ -94,7 +94,7 @@ public class GUI extends JFrame {
         mainPanel . add ( signInButton ) ;
         // button.setEnabled(false);
 
-        //Sign in button onclick handling
+        // Sign in button onclick handling. Different messages depending on the success or not of the operation.
         signInAnswerLabel = new JLabel ("You signed in successfully!");
         signInAnswerLabel . setBounds (50 , 130 , 300 , 50) ;
         signInAnswerLabel . setForeground(signInLabelColor);
@@ -109,7 +109,7 @@ public class GUI extends JFrame {
         secondaryPanel.setBackground(Color.WHITE);
         secondaryPanel.setVisible(false);
 
-        //Date and time
+        //Date and time for the admin window
         timeFormat2 = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
         timeLabel2 = new JLabel();
         secondaryPanel.add(timeLabel2);
@@ -156,6 +156,7 @@ public class GUI extends JFrame {
 
 
         //------ NAVBAR ------
+        // Enables to switch between the employee and admin panel
         navBar = new JPanel();
         navBar . setBounds(0, 0, 400, 30);
 
@@ -173,7 +174,7 @@ public class GUI extends JFrame {
         secondaryPanelButton.addActionListener(switchToSecondary);
         navBar.add(secondaryPanelButton);
 
-
+        // Add the different elements to the main GUI.
         this . add(navBar);
         this . add(secondaryPanel);
         this . add(mainPanel);
@@ -181,19 +182,23 @@ public class GUI extends JFrame {
     }
 
     //------ FUNCTIONS ------
+    // Function for user to manually sign-in.
+    // It is called when clicked on the signInButton.
     private class signIn implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
+            // Gets Date of the sign-in.
             Date date = new Date();
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             String timeStr = sdf.format(date);
             System.out.println("Button clicked! at " + timeStr);
+            // Get the user_id entered by the user.
             System.out.println("ID: " + IdField.getText());
             int userId = Integer.parseInt(IdField.getText());
             System.out.println("ID: " + userId);
 
             boolean doUserExists = false;
-
+            // Search if the user exists by searching the id in our database.
             try {
                 doUserExists = userDAO.searchUser(userId);
             } catch (SQLException exception ) {
@@ -211,6 +216,8 @@ public class GUI extends JFrame {
         }
     }
 
+    // Method for user to sign-in with their face if they registered their face already.
+    // It is called by the FaceRecognition System with the id it recognized.
     public void signInFromFaceId(int faceUserId) {
 
         Date date = new Date();
@@ -508,7 +515,7 @@ public class GUI extends JFrame {
         }
     }
 
-
+    // Check the success of a login if the employee exists.
     private void employeeLoginSuccess(int userId, Date date) {
         Date lastConnectionDate = null;
 
@@ -544,13 +551,13 @@ public class GUI extends JFrame {
                     "Database Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
-
+        // If the user already has a connection with it's id.
         if (lastConnectionDate != null) {
             Date currentDate = new Date();
             SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
             String lastConnectionDay = dateFormatter.format(lastConnectionDate);
             String currentDay = dateFormatter.format(currentDate);
-
+            // Check if the lastConnection from this user is on the same day as the day of this connection.
             if (lastConnectionDay.equals(currentDay)) {
                 JOptionPane.showMessageDialog(dialog,
                         "This user has already signed in today.",
