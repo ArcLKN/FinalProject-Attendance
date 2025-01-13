@@ -4,7 +4,7 @@ public class CreateDatabase {
     public static void main(String[] args) {
         final String URL = "jdbc:mysql://localhost:3306/";
         final String USERNAME = "root";
-        int user = 1;
+        int user = 0;
 
         final String PASSWORD = (user == 0) ? "v)YpyX1;179`" : "1234";
 
@@ -28,7 +28,8 @@ public class CreateDatabase {
 
         String sqlAdmin =
                 "CREATE TABLE IF NOT EXISTS t_admin (" +
-                        "id INT PRIMARY KEY, " +
+                        "img_id INT AUTO_INCREMENT PRIMARY KEY," +
+                        "id INT, " +
                         "username VARCHAR(20), " +
                         "passwordAdmin VARCHAR(20), " +
                         "FOREIGN KEY(id) REFERENCES t_emp(id)" +
@@ -48,6 +49,13 @@ public class CreateDatabase {
         String sqlInsertAdmin =
                 "INSERT INTO t_admin (id, username, passwordAdmin) VALUES ((SELECT id FROM t_emp WHERE nameEmp = 'Professor'), 'Professor', 'password');";
 
+        String slqEmployeeImages =
+                "CREATE TABLE IF NOT EXISTS t_emp_img (" +
+                        "id INT PRIMARY KEY," +
+                        "face_image BLOB NOT NULL," +
+                        "FOREIGN KEY(id) REFERENCES t_emp(id)" +
+                        ");";
+
         try (Connection connection = DriverManager.getConnection(URL, USERNAME, PASSWORD);
              Statement statement = connection.createStatement()) {
 
@@ -58,6 +66,7 @@ public class CreateDatabase {
             statement.executeUpdate(sqlLockInRecord);
             statement.executeUpdate(sqlAdmin);
             statement.executeUpdate(sqlWorkTime);
+            statement.executeUpdate(slqEmployeeImages);
 
             // Insert professor into t_emp table
             statement.executeUpdate(sqlInsertEmployee);

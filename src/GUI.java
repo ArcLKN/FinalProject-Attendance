@@ -1,9 +1,6 @@
-import org.opencv.core.Core;
-
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.File;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -66,8 +63,14 @@ public class GUI extends JFrame {
         timeLabel.setBounds(32, 40, 200, 30);
 
         //Facial Recognition Button
+        JButton registerFaceIdButton = new JButton("New Face ID");
+        registerFaceIdButton.setBounds(270, 40, 110, 30);
+        registerFaceIdButton.addActionListener(new registerFaceIdAction());
+        mainPanel.add(registerFaceIdButton);
+
+        //Facial Connexion Button
         JButton faceIdButton = new JButton("Face ID");
-        faceIdButton.setBounds(300, 40, 80, 30);
+        faceIdButton.setBounds(260 , 172 , 80 , 40) ;
         faceIdButton.addActionListener(new showFaceIdAction());
         mainPanel.add(faceIdButton);
 
@@ -207,6 +210,34 @@ public class GUI extends JFrame {
             }
         }
     }
+
+    public void signInFromFaceId(int faceUserId) {
+
+        Date date = new Date();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String timeStr = sdf.format(date);
+        System.out.println("Button clicked! at " + timeStr);
+        System.out.println("ID: " + faceUserId);
+
+        boolean doUserExists = false;
+
+        try {
+            doUserExists = userDAO.searchUser(faceUserId);
+        } catch (SQLException exception ) {
+            exception.printStackTrace();
+        }
+
+        if (!doUserExists) {
+            signInAnswerLabel.setText("This user ID does not exist.");
+            signInLabelColor = Color.RED;
+            signInAnswerLabel . setForeground(signInLabelColor);
+            signInAnswerLabel . setVisible(true);
+        } else {
+            employeeLoginSuccess(faceUserId, date);
+        }
+
+    }
+
     private class signInAdmin implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -439,19 +470,25 @@ public class GUI extends JFrame {
             secondaryPanel.setVisible(true);
         }
     }
-    private class showFaceIdAction implements ActionListener {
+    private class registerFaceIdAction implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
             EventQueue.invokeLater(() -> {
-                FacialRecognition facialRecognitionWindow = new FacialRecognition();
+                FacialRecognition facialRecognitionWindow = null;
+                try {
+                    facialRecognitionWindow = new FacialRecognition(GUI.this, userDAO, true);
+                } catch (SQLException ex) {
+                    throw new RuntimeException(ex);
+                }
                 facialRecognitionWindow.StartFacialRecognition();
                 // Add a WindowListener to handle window closing
+                FacialRecognition finalFacialRecognitionWindow = facialRecognitionWindow;
                 facialRecognitionWindow.addWindowListener(new java.awt.event.WindowAdapter() {
                     @Override
                     public void windowClosing(java.awt.event.WindowEvent windowEvent) {
                         // Ensure resources are cleaned up when the window is closed
-                        facialRecognitionWindow.stopCamera();  // Stop the camera feed
-                        facialRecognitionWindow.dispose(); // Dispose of the window
+                        finalFacialRecognitionWindow.stopCamera();  // Stop the camera feed
+                        finalFacialRecognitionWindow.dispose(); // Dispose of the window
                     }
                 });
                 facialRecognitionWindow.setVisible(true);
@@ -460,6 +497,35 @@ public class GUI extends JFrame {
             });
         }
     }
+
+    private class showFaceIdAction implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            EventQueue.invokeLater(() -> {
+                FacialRecognition facialRecognitionWindow = null;
+                try {
+                    facialRecognitionWindow = new FacialRecognition(GUI.this, userDAO, false);
+                } catch (SQLException ex) {
+                    throw new RuntimeException(ex);
+                }
+                facialRecognitionWindow.StartFacialRecognition();
+                // Add a WindowListener to handle window closing
+                FacialRecognition finalFacialRecognitionWindow = facialRecognitionWindow;
+                facialRecognitionWindow.addWindowListener(new java.awt.event.WindowAdapter() {
+                    @Override
+                    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                        // Ensure resources are cleaned up when the window is closed
+                        finalFacialRecognitionWindow.stopCamera();  // Stop the camera feed
+                        finalFacialRecognitionWindow.dispose(); // Dispose of the window
+                    }
+                });
+                facialRecognitionWindow.setVisible(true);
+                facialRecognitionWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+            });
+        }
+    }
+
 
     private void employeeLoginSuccess(int userId, Date date) {
         Date lastConnectionDate = null;

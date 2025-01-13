@@ -1,16 +1,13 @@
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.Console;
-import java.io.File;
+import java.io.*;
+import java.sql.Blob;
+import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import javax.swing.*;
-
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
@@ -26,10 +23,11 @@ import org.opencv.objdetect.CascadeClassifier;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 
 public class FacialRecognition extends JFrame {
+
+    private GUI gui;
+    private UserDAO userDAO;
 
     static {
         String relativePath = "libs/opencv_java4100.dll";
@@ -41,6 +39,10 @@ public class FacialRecognition extends JFrame {
         System.out.println("OpenCV Version: " + Core.VERSION);
         System.out.println("load success");
     }
+
+    boolean doRegisterFace;
+
+    boolean doUserExists;
 
     private volatile boolean cameraRunning = true;
 
@@ -57,19 +59,7 @@ public class FacialRecognition extends JFrame {
     private Map<String, Mat> knownFaces;
     private Map<String, Mat> knownFaceEmbeddings = new HashMap<>();
 
-    private String extractNameWithoutNumber(String fileName) {
-        // Expression régulière pour capturer le nom avant le numéro
-        Pattern pattern = Pattern.compile("([a-zA-Z]+)(\\d+)?");
-        Matcher matcher = pattern.matcher(fileName);
-
-        if (matcher.find()) {
-            // Le groupe 1 est le nom sans le numéro
-            return matcher.group(1);
-        }
-        return "Unknown";  // Retourne "Inconnu" si aucun nom valide n'est trouvé
-    }
-
-    public FacialRecognition() {
+    public FacialRecognition(GUI gui, UserDAO userDAO, boolean doRegisterFace) throws SQLException {
         setLayout(null);
 
         cameraScreen = new JLabel();
@@ -90,23 +80,42 @@ public class FacialRecognition extends JFrame {
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
+        this . gui = gui;
+        this . userDAO = userDAO;
+        this . doRegisterFace = doRegisterFace;
+
         knownFaces = new HashMap<>();
         loadKnownFaces();
     }
 
-    private void loadKnownFaces() {
-        // Load images of known individuals and compute embeddings (dummy example)
-        File[] files = new File("known_faces").listFiles();
-        if (files != null) {
-            for (File file : files) {
-                String name = file.getName().replace(".jpg", "");
-                Mat face = Imgcodecs.imread(file.getAbsolutePath());
-                Mat resizedFace = new Mat();
-                Imgproc.resize(face, resizedFace, new org.opencv.core.Size(100, 100)); // Resize once
-                knownFaces.put(name, resizedFace); // Add to the map (actual embeddings are better)
+    private void loadKnownFaces() throws SQLException {
+        // Get images and ids from the database
+        List<FaceData> faceDataList = userDAO.getImages();  // Assuming you have the userDAO object to fetch images from the database
+
+        if (faceDataList != null) {
+            for (FaceData faceData : faceDataList) {
+                int id = faceData.getEmpId();
+                Blob imageBlob = faceData.getFaceImage();
+
+                // Convert Blob to Mat
+                byte[] imageBytes = imageBlob.getBytes(1, (int) imageBlob.length());
+                Mat face = Imgcodecs.imdecode(new MatOfByte(imageBytes), Imgcodecs.IMREAD_COLOR);
+
+                if (!face.empty()) {
+                    // Resize the face image to the desired size
+                    Mat resizedFace = new Mat();
+                    Imgproc.resize(face, resizedFace, new org.opencv.core.Size(100, 100));
+
+                    // Use the id as part of the name
+                    String name = "person_" + id;
+
+                    // Store the resized face in the knownFaces map
+                    knownFaces.put(name, resizedFace);  // knownFaces is a map of name to Mat
+                }
             }
         }
     }
+
 
     private String recognizeFace(Mat faceRegion) {
         // Resize the captured face region to a fixed size (e.g., 100x100)
@@ -125,20 +134,20 @@ public class FacialRecognition extends JFrame {
 
             // Calculate similarity (using norm)
             double distance = Core.norm(resizedFace, knownFace, Core.NORM_L2);
-            System.out.println("Distance: " + distance + ", " + minDistance + " Name: " + name);
+            // System.out.println("Distance: " + distance + ", " + minDistance + " Name: " + name);
             if (distance < minDistance) {
                 minDistance = distance;
                 closestName = name;
             }
         }
 
-        if (minDistance > 6000) {
+        if (minDistance > 7000) {
             return "Unknown";
         }
         return closestName;
     }
 
-    public void startCamera() {
+    public void startCamera() throws SQLException {
         capture = new VideoCapture(0);
         if (!capture.isOpened()) {
             JOptionPane.showMessageDialog(null, "Cannot open the camera.");
@@ -177,7 +186,6 @@ public class FacialRecognition extends JFrame {
                     Imgproc.rectangle(image, face.tl(), face.br(), new Scalar(0, 255, 0), 2);
                     Mat faceRegion = new Mat(image, face);
                     String name = recognizeFace(faceRegion);
-                    name = extractNameWithoutNumber(name);
                     Imgproc.putText(image, name, new org.opencv.core.Point(face.x, face.y - 10),
                             Imgproc.FONT_HERSHEY_SIMPLEX, 0.8, new Scalar(0, 255, 0), 2);
                 }
@@ -192,7 +200,7 @@ public class FacialRecognition extends JFrame {
                 SwingUtilities.invokeLater(() -> cameraScreen.setIcon(finalIcon));
                 if (clicked) {
                     System.out.println("Capture");
-                    String name;
+                    String user_id;
                     int i = 0;
                     for (Rect face : facesArray) {
                         if (face.width > 100 && face.height > 100) {
@@ -200,16 +208,27 @@ public class FacialRecognition extends JFrame {
                             Mat faceRegion = new Mat(image, face);
 
                             String previewName = recognizeFace(faceRegion);
-                            previewName = extractNameWithoutNumber(previewName);
 
                             Image faceImage = matToBufferedImage(faceRegion);
-                            name = openNamingWindow(faceImage, i, previewName);
 
-                            if (name != null || !name.isEmpty()) {
-                                Imgcodecs.imwrite("known_faces/" + name + ".jpg", faceRegion);
-                            } else {
-                                name = new SimpleDateFormat("yyyy-MM-dd-hh-mm-ss").format(new Date());
-                                Imgcodecs.imwrite("images/" + name + "-" + i + ".jpg", faceRegion);
+                            if (doRegisterFace) {
+                                user_id = openNamingWindow(faceImage, i, previewName);
+
+                                doUserExists = false;
+                                if (user_id != null && !user_id.isEmpty()) {
+                                    doUserExists = userDAO.searchUser(Integer.valueOf(user_id));
+                                    if (doUserExists) {
+                                        Blob faceBlob = matToBlob(faceRegion);
+                                        userDAO.saveImage(faceBlob, Integer.valueOf(user_id));
+                                    }
+                                    else {
+                                        System.out.println("User " + user_id + " does not exist.");
+                                    }
+                                }
+                            }
+                            else {
+                                int extractedId = Integer.parseInt(previewName.replace("person_", ""));
+                                gui.signInFromFaceId(extractedId);
                             }
                             i++;
                         }
@@ -224,6 +243,22 @@ public class FacialRecognition extends JFrame {
         cameraRunning = false; // Stop the loop
         if (capture != null && capture.isOpened()) {
             capture.release();  // Release the camera
+        }
+    }
+
+    public Blob matToBlob(Mat mat) {
+        // Convert Mat to MatOfByte
+        MatOfByte matOfByte = new MatOfByte();
+        Imgcodecs.imencode(".jpg", mat, matOfByte); // Encoding Mat to MatOfByte (not ByteArrayOutputStream)
+
+        byte[] imageBytes = matOfByte.toArray(); // Extract byte array from MatOfByte
+
+        // Convert byte array to Blob
+        try {
+            return new javax.sql.rowset.serial.SerialBlob(imageBytes); // This is JDBC Blob
+        } catch (SQLException e) {
+            System.err.println("Error creating Blob from image data: " + e.getMessage());
+            return null; // Handle error appropriately
         }
     }
 
@@ -290,7 +325,11 @@ public class FacialRecognition extends JFrame {
                     ex.printStackTrace();
                 }
                 // Start the camera feed
-                startCamera();
+                try {
+                    startCamera();
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
             }
         }).start();
 

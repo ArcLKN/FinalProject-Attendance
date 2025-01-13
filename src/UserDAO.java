@@ -1,4 +1,6 @@
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class UserDAO {
     public boolean isAdmin(int userId) throws SQLException {
@@ -88,4 +90,42 @@ public class UserDAO {
         }
         return "";
     }
+
+    public void saveImage(Blob image, int userId) throws SQLException {
+        String query = "INSERT INTO t_emp_img (face_image, id) VALUES (?, ?)";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+
+            preparedStatement.setBlob(1, image);
+            preparedStatement.setInt(2, userId);
+            preparedStatement.executeUpdate();
+        }
+    }
+
+    public List<FaceData> getImages() throws SQLException {
+        String query = "SELECT t_emp.id AS emp_id, t_emp_img.face_image " +
+                "FROM t_emp_img " +
+                "INNER JOIN t_emp ON t_emp.id = t_emp_img.id";  // Jointure entre t_emp et t_emp_img
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(query, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
+
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            List<FaceData> faceDataList = new ArrayList<>();
+
+            // Parcourir le résultat et récupérer les données
+            while (resultSet.next()) {
+                int empId = resultSet.getInt("emp_id");  // Récupère l'id de l'employé
+                Blob faceImage = resultSet.getBlob("face_image");  // Récupère l'image
+
+                // Ajouter l'objet FaceData à la liste
+                faceDataList.add(new FaceData(empId, faceImage));
+            }
+
+            return faceDataList;
+        }
+    }
+
 }
