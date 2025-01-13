@@ -45,7 +45,6 @@ public class CreateDatabase {
         String sqlInsertEmployee =
                 "INSERT INTO t_emp (nameEmp, codeEmp) VALUES ('Professor', 'password');";
 
-        //Insertion of a new admin into the t_admin table
         String sqlInsertAdmin =
                 "INSERT INTO t_admin (id, username, passwordAdmin) VALUES ((SELECT id FROM t_emp WHERE nameEmp = 'Professor'), 'Professor', 'password');";
 

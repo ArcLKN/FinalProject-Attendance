@@ -7,7 +7,6 @@ import java.util.List;
 
 public class ConnectionDAO {
 
-    // Create a new connection (check-in) for a user
     public void createConnection(int userId, Date date) throws SQLException {
         String query = "INSERT INTO t_lock_in_record (id, check_in_time) VALUES (?, ?)";
         try (Connection connection = DatabaseConnection.getConnection();
@@ -19,7 +18,6 @@ public class ConnectionDAO {
         }
     }
 
-    // Get the last connection (check-in) time for a user
     public Date searchLastUsersConnection(int userId) throws SQLException {
         String query = "SELECT check_in_time FROM t_lock_in_record WHERE id = ? ORDER BY check_in_time DESC LIMIT 1";
         try (Connection connection = DatabaseConnection.getConnection();
@@ -32,10 +30,9 @@ public class ConnectionDAO {
                 return resultSet.getTimestamp("check_in_time");
             }
         }
-        return null;  // No previous connection found
+        return null;
     }
 
-    // Insert start work time
     public Date insertStartWork(int id, Date start_work_time) throws SQLException {
         String sql = "INSERT INTO t_work_time (id, startWork) VALUES (?, ?)";
         try (Connection connection = DatabaseConnection.getConnection();
@@ -45,8 +42,7 @@ public class ConnectionDAO {
             statement.executeUpdate();
             System.out.println("Start work time recorded for user " + id);
 
-            // Return the fixed start time (10:00 AM) as a Date
-            return new SimpleDateFormat("HH:mm:ss").parse("10:00:00"); // Fixed 10:00 AM start time
+            return new SimpleDateFormat("HH:mm:ss").parse("10:00:00");
         } catch (ParseException e) {
             e.printStackTrace();
             throw new SQLException("Error parsing fixed start time.", e);
@@ -69,17 +65,14 @@ public class ConnectionDAO {
                 String userName = resultSet.getString("nameEmp");
                 Timestamp checkInTime = resultSet.getTimestamp("check_in_time");
 
-                // Format the check-in time to a readable format
                 String formattedCheckInTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(checkInTime);
 
-                // Add the data to the list
                 records.add(new Object[]{userId, userName, formattedCheckInTime});
             }
         }
         return records;
     }
 
-    // Get user info (adjusted for the correct columns)
     public List<Object[]> getUserInfo() throws SQLException {
         String sql = "SELECT t_emp.id, t_emp.nameEmp, t_emp.codeEmp FROM t_emp";
 

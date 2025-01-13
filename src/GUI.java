@@ -272,7 +272,6 @@ public class GUI extends JFrame {
             } else {
                 adminLoginSuccess(adminId, date);
 
-                // Check if the admin is clocked in or not (check t_lock_in_record)
                 Date latestLockIn = null;
                 try {
                     latestLockIn = connectionDAO.searchLastUsersConnection(adminId);
@@ -280,7 +279,6 @@ public class GUI extends JFrame {
                     throw new RuntimeException(ex);
                 }
                 if (latestLockIn == null) {
-                    // Admin has not clocked in yet, clock in and store the start work time
                     try {
                         connectionDAO.createConnection(adminId, date);
                     } catch (SQLException ex) {
@@ -293,7 +291,6 @@ public class GUI extends JFrame {
                     }
                     System.out.println("Admin clocked in at " + date + " and start work time recorded.");
                 } else {
-                    // Admin is already clocked in, do nothing
                     System.out.println("Admin is already clocked in at " + latestLockIn);
                 }
             }
@@ -308,10 +305,8 @@ public class GUI extends JFrame {
             attendanceDialog.setLocationRelativeTo(GUI.this);
             attendanceDialog.setLayout(new BorderLayout());
 
-            // Columns for the table
             String[] columnNames = {"ID", "Name", "Check-in Date"};
 
-            // Retrieve the data
             DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0);
             try {
                 List<Object[]> userConnections = connectionDAO.getUserAttendanceRecords();
@@ -321,19 +316,15 @@ public class GUI extends JFrame {
             } catch (SQLException ex) {
                 JOptionPane.showMessageDialog(attendanceDialog, "Error retrieving user attendance records: " + ex.getMessage(),
                         "Database Error", JOptionPane.ERROR_MESSAGE);
-                return; // Exit if an error occurs
+                return;
             }
 
-            // Create the JTable
             JTable table = new JTable(tableModel);
 
-            // Add it to a JScrollPane
             JScrollPane scrollPane = new JScrollPane(table);
 
-            // Add the JScrollPane to the JDialog
             attendanceDialog.add(scrollPane, BorderLayout.CENTER);
 
-            // Show the dialog
             attendanceDialog.setVisible(true);
         }
     }
@@ -345,11 +336,9 @@ public class GUI extends JFrame {
             infoDialog.setLocationRelativeTo(GUI.this);
             infoDialog.setLayout(new BorderLayout());
 
-            // JPanel for buttons
             JPanel buttonPanel = new JPanel();
             buttonPanel.setLayout(new FlowLayout());
 
-            // Buttons for adding, editing, and deleting users
             JButton registerButton = new JButton("Add user");
             JButton editButton = new JButton("Edit user");
             JButton deleteButton = new JButton("Delete user");
@@ -360,10 +349,8 @@ public class GUI extends JFrame {
 
             infoDialog.add(buttonPanel, BorderLayout.SOUTH);
 
-            // Table columns
             String[] columnNames = {"ID", "Name", "Code"};
 
-            // Retrieve the data
             DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0);
             try {
                 List<Object[]> userInfo = connectionDAO.getUserInfo();
@@ -380,16 +367,15 @@ public class GUI extends JFrame {
             JScrollPane scrollPane = new JScrollPane(table);
             infoDialog.add(scrollPane, BorderLayout.CENTER);
 
-            // Register Button Action
             registerButton.addActionListener(event -> {
                 String name = JOptionPane.showInputDialog(infoDialog, "Enter user name:");
                 String code = JOptionPane.showInputDialog(infoDialog, "Enter user code:");
 
                 if (name != null && code != null) {
                     try {
-                        userDAO.createUser(name, code);  // Adjusted to use name and code
+                        userDAO.createUser(name, code);
                         JOptionPane.showMessageDialog(infoDialog, "User added successfully.");
-                        Object[] newRow = {null, name, code}; // Adjusted to match database columns
+                        Object[] newRow = {null, name, code};
                         tableModel.addRow(newRow);
                     } catch (SQLException ex) {
                         JOptionPane.showMessageDialog(infoDialog, "Error adding user: " + ex.getMessage(),
@@ -481,14 +467,12 @@ public class GUI extends JFrame {
                     throw new RuntimeException(ex);
                 }
                 facialRecognitionWindow.StartFacialRecognition();
-                // Add a WindowListener to handle window closing
                 FacialRecognition finalFacialRecognitionWindow = facialRecognitionWindow;
                 facialRecognitionWindow.addWindowListener(new java.awt.event.WindowAdapter() {
                     @Override
                     public void windowClosing(java.awt.event.WindowEvent windowEvent) {
-                        // Ensure resources are cleaned up when the window is closed
-                        finalFacialRecognitionWindow.stopCamera();  // Stop the camera feed
-                        finalFacialRecognitionWindow.dispose(); // Dispose of the window
+                        finalFacialRecognitionWindow.stopCamera();
+                        finalFacialRecognitionWindow.dispose();
                     }
                 });
                 facialRecognitionWindow.setVisible(true);
@@ -509,14 +493,12 @@ public class GUI extends JFrame {
                     throw new RuntimeException(ex);
                 }
                 facialRecognitionWindow.StartFacialRecognition();
-                // Add a WindowListener to handle window closing
                 FacialRecognition finalFacialRecognitionWindow = facialRecognitionWindow;
                 facialRecognitionWindow.addWindowListener(new java.awt.event.WindowAdapter() {
                     @Override
                     public void windowClosing(java.awt.event.WindowEvent windowEvent) {
-                        // Ensure resources are cleaned up when the window is closed
-                        finalFacialRecognitionWindow.stopCamera();  // Stop the camera feed
-                        finalFacialRecognitionWindow.dispose(); // Dispose of the window
+                        finalFacialRecognitionWindow.stopCamera();
+                        finalFacialRecognitionWindow.dispose();
                     }
                 });
                 facialRecognitionWindow.setVisible(true);
@@ -530,14 +512,12 @@ public class GUI extends JFrame {
     private void employeeLoginSuccess(int userId, Date date) {
         Date lastConnectionDate = null;
 
-        // Dialog creation
         JDialog dialog = new JDialog(GUI.this, "Login Successful", true);
         dialog.setSize(300, 200);
         dialog.setLocationRelativeTo(GUI.this);
         dialog.setLayout(new BorderLayout());
 
-        // Welcome message
-        String userName = userDAO.getUserName(userId); // Fetch the user name
+        String userName = userDAO.getUserName(userId);
         JLabel messageLabel = new JLabel("Welcome " + userName, JLabel.CENTER);
         dialog.add(messageLabel, BorderLayout.NORTH);
 
@@ -556,7 +536,6 @@ public class GUI extends JFrame {
         buttonPanel.add(checkButton);
         dialog.add(buttonPanel, BorderLayout.SOUTH);
 
-        // Retrieve the last sign-in record for the user
         try {
             lastConnectionDate = connectionDAO.searchLastUsersConnection(userId);
         } catch (SQLException ex) {
@@ -566,26 +545,23 @@ public class GUI extends JFrame {
             return;
         }
 
-        // If the user has signed in today, do not allow another sign-in
         if (lastConnectionDate != null) {
             Date currentDate = new Date();
             SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
             String lastConnectionDay = dateFormatter.format(lastConnectionDate);
             String currentDay = dateFormatter.format(currentDate);
 
-            // Check if the user has already signed in today
             if (lastConnectionDay.equals(currentDay)) {
                 JOptionPane.showMessageDialog(dialog,
                         "This user has already signed in today.",
                         "Check-in Error",
                         JOptionPane.WARNING_MESSAGE);
-                return; // Exit if already signed in today
+                return;
             }
         }
 
-        // Create a new clock-in record
         try {
-            connectionDAO.createConnection(userId, date); // Add the clock-in time to the database
+            connectionDAO.createConnection(userId, date);
         } catch (SQLException exception) {
             exception.printStackTrace();
             JOptionPane.showMessageDialog(dialog, "Error creating new sign-in: " + exception.getMessage(),
@@ -593,10 +569,9 @@ public class GUI extends JFrame {
             return;
         }
 
-        // Step 2: Insert start work time (10:00 AM) into the database using insertStartWork and return the start time
         Date startWorkTime = null;
         try {
-            startWorkTime = connectionDAO.insertStartWork(userId, date); // This now returns the fixed start time (10:00 AM)
+            startWorkTime = connectionDAO.insertStartWork(userId, date);
         } catch (SQLException ex) {
             ex.printStackTrace();
             JOptionPane.showMessageDialog(dialog, "Error inserting start work time: " + ex.getMessage(),
@@ -604,13 +579,12 @@ public class GUI extends JFrame {
             return;
         }
 
-        // Step 3: Compare the actual check-in time to the stored start work time
         SimpleDateFormat hourFormatter = new SimpleDateFormat("HH:mm:ss");
-        String userHourStr = hourFormatter.format(date); // Get the check-in time
+        String userHourStr = hourFormatter.format(date);
         Date userCheckInTime;
 
         try {
-            userCheckInTime = hourFormatter.parse(userHourStr); // Parse the check-in time
+            userCheckInTime = hourFormatter.parse(userHourStr);
         } catch (ParseException ex) {
             ex.printStackTrace();
             JOptionPane.showMessageDialog(dialog, "Error parsing sign-in time: " + ex.getMessage(),
@@ -618,10 +592,8 @@ public class GUI extends JFrame {
             return;
         }
 
-        // Check if the user is late by comparing the check-in time to the start work time
         boolean isUserLate = userCheckInTime.after(startWorkTime);
 
-        // Set the appropriate message based on the comparison
         if (isUserLate) {
             answerLabel.setText("You are late.");
             answerColor = Color.ORANGE;
@@ -633,14 +605,12 @@ public class GUI extends JFrame {
         answerLabel.setForeground(answerColor);
         answerLabel.setVisible(true);
 
-        // Display the dialog
         dialog.setVisible(true);
     }
 
     private void adminLoginSuccess(int adminId, Date date) {
         Date lastConnectionDate = null;
 
-        // Dialog creation
         JDialog dialog = new JDialog(GUI.this, "Admin Login Successful", true);
         dialog.setSize(400, 300);
         dialog.setLocationRelativeTo(GUI.this);
