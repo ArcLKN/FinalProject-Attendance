@@ -1,7 +1,7 @@
 import java.sql.SQLException;
 
 public class Main {
-    public static void main(String[] args) throws InterruptedException, SQLException {
+    public static void main(String[] args) throws InterruptedException {
         UserDAO userDAO = new UserDAO();
         ConnectionDAO connectionDAO = new ConnectionDAO();
 
