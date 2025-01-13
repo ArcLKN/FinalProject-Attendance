@@ -615,6 +615,7 @@ public class GUI extends JFrame {
         dialog.setSize(400, 300);
         dialog.setLocationRelativeTo(GUI.this);
         dialog.setLayout(new BorderLayout());
+        dialog.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
         JPanel messagePanel = new JPanel();
         messagePanel.setLayout(new BoxLayout(messagePanel, BoxLayout.Y_AXIS));
@@ -653,28 +654,6 @@ public class GUI extends JFrame {
         JPanel buttonPanel = new JPanel();
         buttonPanel.add(checkButton);
         dialog.add(buttonPanel, BorderLayout.SOUTH);
-
-        try {
-            lastConnectionDate = connectionDAO.searchLastUsersConnection(adminId);
-        } catch (SQLException ex) {
-            throw new RuntimeException(ex);
-        }
-
-        if (lastConnectionDate != null) {
-            Date currentDate = new Date();
-            SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
-            String lastConnectionDay = dateFormatter.format(lastConnectionDate);
-            String currentDay = dateFormatter.format(currentDate);
-
-            boolean hasAdminAlreadySignedIn = lastConnectionDay.equals(currentDay);
-            if (hasAdminAlreadySignedIn) {
-                JOptionPane.showMessageDialog(dialog,
-                        "This admin has already signed in today.",
-                        "Check-in Error",
-                        JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-        }
 
         try {
             connectionDAO.createConnection(adminId, date);

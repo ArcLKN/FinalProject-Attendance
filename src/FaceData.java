@@ -9,7 +9,6 @@ public class FaceData {
         this.faceImage = faceImage;
     }
 
-    // Getters et Setters
     public int getEmpId() {
         return empId;
     }
