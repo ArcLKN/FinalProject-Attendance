@@ -1,6 +1,7 @@
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.Console;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,6 +30,19 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 
 public class FacialRecognition extends JFrame {
+
+    static {
+        String relativePath = "libs/opencv_java4100.dll";
+        File file = new File(relativePath);
+        String absolutePath = file.getAbsolutePath();
+        System.load(absolutePath);
+
+        // Load the native library
+        System.out.println("OpenCV Version: " + Core.VERSION);
+        System.out.println("load success");
+    }
+
+    private volatile boolean cameraRunning = true;
 
     private JLabel cameraScreen;
     private JButton btnCapture;
@@ -74,8 +88,7 @@ public class FacialRecognition extends JFrame {
 
         setSize(new Dimension(640, 560));
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setVisible(true);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
         knownFaces = new HashMap<>();
         loadKnownFaces();
@@ -88,13 +101,15 @@ public class FacialRecognition extends JFrame {
             for (File file : files) {
                 String name = file.getName().replace(".jpg", "");
                 Mat face = Imgcodecs.imread(file.getAbsolutePath());
-                knownFaces.put(name, face); // Add to the map (actual embeddings are better)
+                Mat resizedFace = new Mat();
+                Imgproc.resize(face, resizedFace, new org.opencv.core.Size(100, 100)); // Resize once
+                knownFaces.put(name, resizedFace); // Add to the map (actual embeddings are better)
             }
         }
     }
 
     private String recognizeFace(Mat faceRegion) {
-        // Resize the captured face region to match the size of known faces (e.g., 100x100)
+        // Resize the captured face region to a fixed size (e.g., 100x100)
         int width = 100;  // Example size, adjust as needed
         int height = 100;
         Mat resizedFace = new Mat();
@@ -103,22 +118,20 @@ public class FacialRecognition extends JFrame {
         double minDistance = Double.MAX_VALUE;
         String closestName = "Unknown";
 
+        // Resize all known faces once when loading them and compare with resized captured face
         for (Map.Entry<String, Mat> entry : knownFaces.entrySet()) {
             String name = entry.getKey();
             Mat knownFace = entry.getValue();
 
-            // Resize the known face to the same size as the captured face
-            Mat resizedKnownFace = new Mat();
-            Imgproc.resize(knownFace, resizedKnownFace, new org.opencv.core.Size(width, height));
-
             // Calculate similarity (using norm)
-            double distance = Core.norm(resizedFace, resizedKnownFace, Core.NORM_L2);
+            double distance = Core.norm(resizedFace, knownFace, Core.NORM_L2);
             System.out.println("Distance: " + distance + ", " + minDistance + " Name: " + name);
             if (distance < minDistance) {
                 minDistance = distance;
                 closestName = name;
             }
         }
+
         if (minDistance > 6000) {
             return "Unknown";
         }
@@ -147,7 +160,7 @@ public class FacialRecognition extends JFrame {
         }
 
         ImageIcon icon;
-        while (true) {
+        while (cameraRunning) {
             if (capture.read(image)) {
                 // Detect faces
                 Mat grayscaleImage = new Mat();
@@ -193,9 +206,8 @@ public class FacialRecognition extends JFrame {
                             name = openNamingWindow(faceImage, i, previewName);
 
                             if (name != null || !name.isEmpty()) {
-                                Imgcodecs.imwrite("known_faces/" + name + ".jpg", faceRegion );
-                            }
-                            else {
+                                Imgcodecs.imwrite("known_faces/" + name + ".jpg", faceRegion);
+                            } else {
                                 name = new SimpleDateFormat("yyyy-MM-dd-hh-mm-ss").format(new Date());
                                 Imgcodecs.imwrite("images/" + name + "-" + i + ".jpg", faceRegion);
                             }
@@ -205,6 +217,13 @@ public class FacialRecognition extends JFrame {
                     clicked = false;
                 }
             }
+        }
+    }
+
+    public void stopCamera() {
+        cameraRunning = false; // Stop the loop
+        if (capture != null && capture.isOpened()) {
+            capture.release();  // Release the camera
         }
     }
 
@@ -261,33 +280,19 @@ public class FacialRecognition extends JFrame {
         return bufferedImage;
     }
 
-    public static void main(String[] args) {
-        String relativePath = "libs/opencv_java4100.dll";
-        File file = new File(relativePath);
-        String absolutePath = file.getAbsolutePath();
-
-        // Load the native library
-        System.load(absolutePath);
-        System.out.println("OpenCV Version: " + Core.VERSION);
-        System.out.println("load success");
-
-        EventQueue.invokeLater(new Runnable() {
+    public void StartFacialRecognition() {
+        new Thread(new Runnable() {
             @Override
             public void run() {
-                FacialRecognition facialRecognition = new FacialRecognition();
-
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            Thread.sleep(33); // ~30 FPS
-                        } catch (InterruptedException ex) {
-                            ex.printStackTrace();
-                        }
-                        facialRecognition.startCamera();
-                    }
-                }).start();
+                try {
+                    Thread.sleep(33); // ~30 FPS
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
+                }
+                // Start the camera feed
+                startCamera();
             }
-        });
+        }).start();
+
     }
 }

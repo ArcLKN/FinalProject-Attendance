@@ -1,6 +1,9 @@
+import org.opencv.core.Core;
+
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -62,6 +65,12 @@ public class GUI extends JFrame {
         timer.start();
         int panelWidth = mainPanel.getWidth();
         timeLabel.setBounds(32, 40, 200, 30);
+
+        //Facial Recognition Button
+        JButton faceIdButton = new JButton("Face ID");
+        faceIdButton.setBounds(300, 40, 80, 30);
+        faceIdButton.addActionListener(new showFaceIdAction());
+        mainPanel.add(faceIdButton);
 
         //ID label
         JLabel label = new JLabel ("Enter your ID :");
@@ -161,6 +170,7 @@ public class GUI extends JFrame {
         showSecondary switchToSecondary = new showSecondary();
         secondaryPanelButton.addActionListener(switchToSecondary);
         navBar.add(secondaryPanelButton);
+
 
         this . add(navBar);
         this . add(secondaryPanel);
@@ -434,6 +444,27 @@ public class GUI extends JFrame {
         public void actionPerformed(ActionEvent e) {
             mainPanel . setVisible(false);
             secondaryPanel . setVisible(true);
+        }
+    }
+    private class showFaceIdAction implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            EventQueue.invokeLater(() -> {
+                FacialRecognition facialRecognitionWindow = new FacialRecognition();
+                facialRecognitionWindow.StartFacialRecognition();
+                // Add a WindowListener to handle window closing
+                facialRecognitionWindow.addWindowListener(new java.awt.event.WindowAdapter() {
+                    @Override
+                    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                        // Ensure resources are cleaned up when the window is closed
+                        facialRecognitionWindow.stopCamera();  // Stop the camera feed
+                        facialRecognitionWindow.dispose(); // Dispose of the window
+                    }
+                });
+                facialRecognitionWindow.setVisible(true);
+                facialRecognitionWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+            });
         }
     }
 
