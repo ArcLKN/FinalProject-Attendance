@@ -234,14 +234,14 @@ public class GUI extends JFrame {
                 // Check if the admin is clocked in or not (check t_lock_in_record)
                 Date latestLockIn = null;
                 try {
-                    latestLockIn = connectionDAO.getLatestLockIn(adminId);
+                    latestLockIn = connectionDAO.searchLastUsersConnection(adminId);
                 } catch (SQLException ex) {
                     throw new RuntimeException(ex);
                 }
                 if (latestLockIn == null) {
                     // Admin has not clocked in yet, clock in and store the start work time
                     try {
-                        connectionDAO.insertLockIn(adminId, date);
+                        connectionDAO.createConnection(adminId, date);
                     } catch (SQLException ex) {
                         throw new RuntimeException(ex);
                     }
@@ -496,13 +496,24 @@ public class GUI extends JFrame {
             return;
         }
 
-        // Check if the user is late based on the fixed time (e.g., 10:00 AM)
+        // Step 2: Insert start work time (10:00 AM) into the database using insertStartWork and return the start time
+        Date startWorkTime = null;
+        try {
+            startWorkTime = connectionDAO.insertStartWork(userId, date); // This now returns the fixed start time (10:00 AM)
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(dialog, "Error inserting start work time: " + ex.getMessage(),
+                    "Database Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Step 3: Compare the actual check-in time to the stored start work time
         SimpleDateFormat hourFormatter = new SimpleDateFormat("HH:mm:ss");
-        String userHourStr = hourFormatter.format(date);
-        Date userHour;
+        String userHourStr = hourFormatter.format(date); // Get the check-in time
+        Date userCheckInTime;
 
         try {
-            userHour = hourFormatter.parse(userHourStr);
+            userCheckInTime = hourFormatter.parse(userHourStr); // Parse the check-in time
         } catch (ParseException ex) {
             ex.printStackTrace();
             JOptionPane.showMessageDialog(dialog, "Error parsing sign-in time: " + ex.getMessage(),
@@ -510,33 +521,20 @@ public class GUI extends JFrame {
             return;
         }
 
-        // Fixed hour (e.g., 10:00 AM)
-        String fixedHourStr = "10:00:00";
-        Date fixedHour;
+        // Check if the user is late by comparing the check-in time to the start work time
+        boolean isUserLate = userCheckInTime.after(startWorkTime);
 
-        try {
-            fixedHour = hourFormatter.parse(fixedHourStr);
-        } catch (ParseException ex) {
-            ex.printStackTrace();
-            JOptionPane.showMessageDialog(dialog, "Error parsing fixed hour: " + ex.getMessage(),
-                    "Time Parsing Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        // Check if the user is late
-        boolean isUserLate = userHour.after(fixedHour);
-
+        // Set the appropriate message based on the comparison
         if (isUserLate) {
             answerLabel.setText("You are late.");
             answerColor = Color.ORANGE;
-            answerLabel.setForeground(answerColor);
-            answerLabel.setVisible(true);
         } else {
             answerLabel.setText("You signed in successfully!");
             answerColor = Color.GREEN;
-            answerLabel.setForeground(answerColor);
-            answerLabel.setVisible(true);
         }
+
+        answerLabel.setForeground(answerColor);
+        answerLabel.setVisible(true);
 
         // Display the dialog
         dialog.setVisible(true);

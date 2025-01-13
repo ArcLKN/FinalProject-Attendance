@@ -1,4 +1,5 @@
 import java.sql.*;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -18,17 +19,6 @@ public class ConnectionDAO {
         }
     }
 
-    // Insert a lock-in record (clock-in)
-    public void insertLockIn(int id, Date check_in_time) throws SQLException {
-        String sql = "INSERT INTO t_lock_in_record (id, check_in_time) VALUES (?, ?)";
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, id);
-            statement.setTimestamp(2, new Timestamp(check_in_time.getTime()));
-            statement.executeUpdate();
-        }
-    }
-
     // Get the last connection (check-in) time for a user
     public Date searchLastUsersConnection(int userId) throws SQLException {
         String query = "SELECT check_in_time FROM t_lock_in_record WHERE id = ? ORDER BY check_in_time DESC LIMIT 1";
@@ -45,45 +35,22 @@ public class ConnectionDAO {
         return null;  // No previous connection found
     }
 
-    // Get the latest lock-in time for a specific user
-    public Date getLatestLockIn(int id) throws SQLException {
-        String sql = "SELECT check_in_time FROM t_lock_in_record WHERE id = ? ORDER BY check_in_time DESC LIMIT 1";
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, id);
-            try (ResultSet resultSet = statement.executeQuery()) {
-                if (resultSet.next()) {
-                    return resultSet.getTimestamp("check_in_time");
-                }
-            }
-        }
-        return null;
-    }
-
     // Insert start work time
-    public void insertStartWork(int id, Date start_work_time) throws SQLException {
+    public Date insertStartWork(int id, Date start_work_time) throws SQLException {
         String sql = "INSERT INTO t_work_time (id, startWork) VALUES (?, ?)";
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, id);
             statement.setTimestamp(2, new Timestamp(start_work_time.getTime()));
             statement.executeUpdate();
-        }
-    }
+            System.out.println("Start work time recorded for user " + id);
 
-    // Get the start work time for a specific user
-    public Date getStartWork(int id) throws SQLException {
-        String sql = "SELECT startWork FROM t_work_time WHERE id = ? ORDER BY startWork DESC LIMIT 1";
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, id);
-            try (ResultSet resultSet = statement.executeQuery()) {
-                if (resultSet.next()) {
-                    return resultSet.getTimestamp("startWork");
-                }
-            }
+            // Return the fixed start time (10:00 AM) as a Date
+            return new SimpleDateFormat("HH:mm:ss").parse("10:00:00"); // Fixed 10:00 AM start time
+        } catch (ParseException e) {
+            e.printStackTrace();
+            throw new SQLException("Error parsing fixed start time.", e);
         }
-        return null;
     }
 
     public List<Object[]> getUserAttendanceRecords() throws SQLException {

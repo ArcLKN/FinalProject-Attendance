@@ -73,7 +73,7 @@ public class UserDAO {
             throw new RuntimeException(e);
         }
 
-        return username; // Return the username or null if not found
+        return username;
     }
 
     public String getPassword(int userId) throws SQLException {
@@ -86,6 +86,6 @@ public class UserDAO {
                 return resultSet.getString("passwordAdmin");
             }
         }
-        return "";  // Return an empty string if password is not found
+        return "";
     }
 }

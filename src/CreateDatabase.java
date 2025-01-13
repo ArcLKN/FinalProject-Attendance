@@ -44,14 +44,14 @@ public class CreateDatabase {
         String sqlInsertEmployee =
                 "INSERT INTO t_emp (nameEmp, codeEmp) VALUES ('Professor', 'password');";
 
-        // SQL to insert a new admin into the t_admin table (this will be executed after inserting into t_emp)
+        //Insertion of a new admin into the t_admin table
         String sqlInsertAdmin =
                 "INSERT INTO t_admin (id, username, passwordAdmin) VALUES ((SELECT id FROM t_emp WHERE nameEmp = 'Professor'), 'Professor', 'password');";
 
         try (Connection connection = DriverManager.getConnection(URL, USERNAME, PASSWORD);
              Statement statement = connection.createStatement()) {
 
-            // Execute the SQL commands to create the database and tables
+            //Commands to create the database and tables
             statement.executeUpdate(sqlCreateDB);
             statement.executeUpdate(sqlUseDB);
             statement.executeUpdate(sqlTemp);
@@ -59,10 +59,10 @@ public class CreateDatabase {
             statement.executeUpdate(sqlAdmin);
             statement.executeUpdate(sqlWorkTime);
 
-            // Insert the employee (professor) into the t_emp table
+            // Insert professor into t_emp table
             statement.executeUpdate(sqlInsertEmployee);
 
-            // Insert the admin into the t_admin table, using the id of the professor inserted above
+            // Inserting it to the t_admin table
             statement.executeUpdate(sqlInsertAdmin);
 
             System.out.println("Database and tables created successfully!");
