@@ -9,12 +9,7 @@ public class DatabaseConnection {
 
     private static final String PASSWORD = (user == 0) ? "v)YpyX1;179`" : "1234";
 
-    //v)YpyX1;179`
-    //1234
-
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(URL, USERNAME, PASSWORD);
-
-
     }
 }
