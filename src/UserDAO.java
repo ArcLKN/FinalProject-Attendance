@@ -9,7 +9,7 @@ public class UserDAO {
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, userId);
             ResultSet resultSet = statement.executeQuery();
-            return resultSet.next();  // Returns true if the user is an admin
+            return resultSet.next();
         }
     }
     public void createUser(String nameEmp, String codeEmp) throws SQLException {
@@ -37,11 +37,10 @@ public class UserDAO {
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, userId);
             ResultSet resultSet = statement.executeQuery();
-            return resultSet.next();  // Returns true if the user exists
+            return resultSet.next();
         }
     }
     public void updateUser(int id, String key, String value) throws SQLException {
-        // Check for valid column names
         if (!key.equals("nameEmp") && !key.equals("codeEmp")) {
             throw new IllegalArgumentException("Invalid column name: " + key);
         }
@@ -106,7 +105,7 @@ public class UserDAO {
     public List<FaceData> getImages() throws SQLException {
         String query = "SELECT t_emp.id AS emp_id, t_emp_img.face_image " +
                 "FROM t_emp_img " +
-                "INNER JOIN t_emp ON t_emp.id = t_emp_img.id";  // Jointure entre t_emp et t_emp_img
+                "INNER JOIN t_emp ON t_emp.id = t_emp_img.id";
 
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(query, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
@@ -115,12 +114,10 @@ public class UserDAO {
 
             List<FaceData> faceDataList = new ArrayList<>();
 
-            // Parcourir le résultat et récupérer les données
             while (resultSet.next()) {
-                int empId = resultSet.getInt("emp_id");  // Récupère l'id de l'employé
-                Blob faceImage = resultSet.getBlob("face_image");  // Récupère l'image
+                int empId = resultSet.getInt("emp_id");
+                Blob faceImage = resultSet.getBlob("face_image");
 
-                // Ajouter l'objet FaceData à la liste
                 faceDataList.add(new FaceData(empId, faceImage));
             }
 
